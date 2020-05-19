@@ -1,0 +1,14 @@
+{"1.2.0",
+[{<<"poolboy">>,{pkg,<<"poolboy">>,<<"1.5.2">>},1},
+ {<<"riak_core">>,{pkg,<<"riak_core_lite">>,<<"0.10.0">>},0},
+ {<<"riak_core_lite_util">>,{pkg,<<"riak_core_lite_util">>,<<"0.1.0">>},0}]}.
+[
+{pkg_hash,[
+ {<<"poolboy">>, <<"392B007A1693A64540CEAD79830443ABF5762F5D30CF50BC95CB2C1AAAFA006B">>},
+ {<<"riak_core">>, <<"52864992CBD2331F7C5E7753374D8F1655A2046B64A6DF3E5184B6D42E936963">>},
+ {<<"riak_core_lite_util">>, <<"B0FF95B2782B5C1E546E39A0910A5A9F0BBF8AB8B6F0A4256986707B552F7FA9">>}]},
+{pkg_hash_ext,[
+ {<<"poolboy">>, <<"DAD79704CE5440F3D5A3681C8590B9DC25D1A561E8F5A9C995281012860901E3">>},
+ {<<"riak_core">>, <<"712892ECBAAFBA6355452B243E1E9F684CE28585D6D4CC040D1696C98B5B05F7">>},
+ {<<"riak_core_lite_util">>, <<"3147D80A74EFC7B7107B874FEA5AA2035F0D431794669324F42B84B4A6F6C40C">>}]}
+].
