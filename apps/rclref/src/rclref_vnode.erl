@@ -1,26 +1,13 @@
 -module(rclref_vnode).
+
 -behaviour(riak_core_vnode).
 
--export([start_vnode/1,
-         init/1,
-         terminate/2,
-         handle_command/3,
-         is_empty/1,
-         delete/1,
-         handle_handoff_command/3,
-         handoff_starting/2,
-         handoff_cancelled/1,
-         handoff_finished/2,
-         handle_handoff_data/2,
-         encode_handoff_item/2,
-         handle_overload_command/3,
-         handle_overload_info/2,
-         handle_coverage/4,
-         handle_exit/3]).
+-export([start_vnode/1, init/1, terminate/2, handle_command/3, is_empty/1, delete/1,
+         handle_handoff_command/3, handoff_starting/2, handoff_cancelled/1, handoff_finished/2,
+         handle_handoff_data/2, encode_handoff_item/2, handle_overload_command/3,
+         handle_overload_info/2, handle_coverage/4, handle_exit/3]).
 
--ignore_xref([
-             start_vnode/1
-             ]).
+-ignore_xref([{start_vnode, 1}]).
 
 -record(state, {partition}).
 
@@ -29,7 +16,7 @@ start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 init([Partition]) ->
-    {ok, #state { partition=Partition }}.
+    {ok, #state{partition = Partition}}.
 
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->

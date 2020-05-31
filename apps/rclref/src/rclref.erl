@@ -1,12 +1,8 @@
 -module(rclref).
 
--export([
-         ping/0
-        ]).
+-export([ping/0]).
 
--ignore_xref([
-              ping/0
-             ]).
+-ignore_xref([{ping, 0}]).
 
 %% Public API
 

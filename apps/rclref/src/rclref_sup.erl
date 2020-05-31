@@ -4,7 +4,6 @@
 
 %% API
 -export([start_link/0]).
-
 %% Supervisor callbacks
 -export([init/1]).
 
@@ -20,10 +19,11 @@ start_link() ->
 %% ===================================================================
 
 init(_Args) ->
-    VMaster = { rclref_vnode_master,
-                  {riak_core_vnode_master, start_link, [rclref_vnode]},
-                  permanent, 5000, worker, [riak_core_vnode_master]},
+    VMaster = {rclref_vnode_master,
+               {riak_core_vnode_master, start_link, [rclref_vnode]},
+               permanent,
+               5000,
+               worker,
+               [riak_core_vnode_master]},
 
-    { ok,
-        { {one_for_one, 5, 10},
-          [VMaster]}}.
+    {ok, {{one_for_one, 5, 10}, [VMaster]}}.
