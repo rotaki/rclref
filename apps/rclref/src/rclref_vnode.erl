@@ -21,6 +21,11 @@ init([Partition]) ->
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
     {reply, {pong, node(), State#state.partition}, State};
+handle_command({kv_put_request, _Key, _Value, Pid}, Sender, State) ->
+    io:format("Sender ~p~n", [Sender]),
+    io:format("Pid ~p~n", [Pid]),
+    rclrel_put_statem:done_put(Pid),
+    {noreply, State};
 handle_command(Message, _Sender, State) ->
     logger:warning("unhandled_command ~p", [Message]),
     {noreply, State}.

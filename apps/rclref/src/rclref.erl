@@ -1,6 +1,6 @@
 -module(rclref).
 
--export([ping/0]).
+-export([ping/0, put/2]).
 
 -ignore_xref([{ping, 0}]).
 
@@ -18,3 +18,7 @@ ping() ->
     PrefList = riak_core_apl:get_primary_apl(DocIdx, N, rclref),
     [{IndexNode, _Type}] = PrefList,
     riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rclref_vnode_master).
+
+put(Key, Value) ->
+    {ok, ReqId} = rclref_put_statem:put(node(), Key, Value),
+    io:format("Doing put ~p~n", [ReqId]).

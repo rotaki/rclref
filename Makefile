@@ -8,12 +8,12 @@ DEV3RELPATH = _build/dev3/rel/rclref
 APPNAME = rclref
 SHELL = /bin/bash
 
-format:
-	$(REBAR) format
-
 release:
 	$(REBAR) release
 	mkdir -p $(RELPATH)/../rclref_config
+
+format:
+	$(REBAR) format
 
 console:
 	cd $(RELPATH) && ./bin/rclref console
