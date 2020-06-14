@@ -1,6 +1,6 @@
 -module(rclref).
 
--export([ping/0, put/2, get/1]).
+-export([ping/0, put/2, get/1, delete/1]).
 
 -ignore_xref([{ping, 0}]).
 
@@ -50,3 +50,7 @@ get(Key) ->
       after ?TIMEOUT_GET ->
                 logger:error("(get) timeout")
     end.
+
+delete(Key) ->
+    % keep it as a tombstone
+    rclref:put(Key, undefined).
