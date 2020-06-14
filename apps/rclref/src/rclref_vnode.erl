@@ -20,7 +20,7 @@ init([Index]) ->
     Mod = rclref_ets_backend,
     case Mod:start(Index, undefined) of
       {ok, ModState} ->
-          logger:info("Successfully started ~p backend for index ~p", [Mod, Index]),
+          logger:debug("Successfully started ~p backend for index ~p", [Mod, Index]),
           State = #state{index = Index, mod = Mod, modstate = ModState},
           {ok, State};
       {error, Reason} ->
@@ -36,8 +36,8 @@ handle_command({kv_put_request, Key, Value, Pid},
                State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
     case Mod:put(Key, Value, ModState0) of
       {ok, ModState1} ->
-          logger:info("Successfully put kv with key: ~p, value: ~p for index: ~p",
-                      [Key, Value, Index]),
+          logger:debug("Successfully put kv with key: ~p, value: ~p for index: ~p",
+                       [Key, Value, Index]),
           rclref_put_statem:done_put(Pid),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
@@ -53,14 +53,14 @@ handle_command({kv_get_request, Key, Pid},
                State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
     case Mod:get(Key, ModState0) of
       {ok, not_found, ModState1} ->
-          logger:info("Failed to get kv with key: ~p for index: ~p, error: ~p",
-                      [Key, Index, not_found]),
+          logger:debug("Failed to get kv with key: ~p for index: ~p, error: ~p",
+                       [Key, Index, not_found]),
 
           rclref_get_statem:fail_get(Pid),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {ok, Value, ModState1} ->
-          logger:info("Successfully put kv with key: ~p for index: ~p", [Key, Index]),
+          logger:debug("Successfully put kv with key: ~p for index: ~p", [Key, Index]),
           rclref_get_statem:done_get(Pid, Value),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};

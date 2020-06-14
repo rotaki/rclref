@@ -12,8 +12,8 @@
 -define(N, 3).
 -define(W, 3).
 -define(R, 3).
-% timeout per state 10 seconds
--define(TIMEOUT, 10000).
+% timeout per state 5 seconds
+-define(TIMEOUT, 5000).
 
 -record(state, {req_id, from, client, key, value, preflist, num_r = 0, num_w = 0}).
 
@@ -28,7 +28,6 @@ start_link([ReqId, From, Client, Key, Value]) ->
     gen_statem:start_link(?MODULE, [ReqId, From, Client, Key, Value], []).
 
 stop(Pid, Reason) ->
-    logger:info("Stopping PutStatem, Pid:~p", [Pid]),
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
@@ -64,6 +63,7 @@ code_change(_Vsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 terminate(Reason, _StateName, #state{req_id = ReqId, from = From}) ->
+    logger:info("Terminating PutStatem, Pid:~p", [self()]),
     case Reason of
       normal ->
           From ! {ok, ReqId};
@@ -75,8 +75,8 @@ terminate(Reason, _StateName, #state{req_id = ReqId, from = From}) ->
 
 % State function
 waiting(cast, done_put, State = #state{num_w = Num_w0}) ->
-    logger:info("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                [cast, done_put, Num_w0]),
+    logger:debug("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
+                 [cast, done_put, Num_w0]),
     Num_w = Num_w0 + 1,
     NewState = State#state{num_w = Num_w},
     case Num_w =:= ?W of
@@ -87,14 +87,14 @@ waiting(cast, done_put, State = #state{num_w = Num_w0}) ->
     end;
 waiting(cast, fail_put, State = #state{num_w = Num_w0}) ->
     %TODO: count number of failures
-    logger:info("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                [cast, fail_put, Num_w0]),
+    logger:debug("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
+                 [cast, fail_put, Num_w0]),
     {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]};
 waiting(state_timeout, hard_stop, State) ->
-    logger:info("PutStatem at WAITING state with event ~p:~p", [state_timeout, hard_stop]),
+    logger:debug("PutStatem at WAITING state with event ~p:~p", [state_timeout, hard_stop]),
     {stop, waiting_timed_out, State};
 waiting(EventType, EventContent, State = #state{}) ->
-    logger:info("PutStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
+    logger:debug("PutStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
     {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 % Internal Functions

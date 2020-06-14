@@ -5,8 +5,9 @@
 -ignore_xref([{ping, 0}]).
 
 %TODO: Get these numbers from config
--define(TIMEOUT_PUT, 5000).
--define(TIMEOUT_GET, 5000).
+%TODO: Make state timeout compatible with the base timeout
+-define(TIMEOUT_PUT, 2000).
+-define(TIMEOUT_GET, 2000).
 
 %% Public API
 
