@@ -9,9 +9,9 @@
 -export([waiting/3]).
 -export([reqid/0]).
 
--define(N, 1).
--define(W, 1).
--define(R, 2).
+-define(N, 3).
+-define(W, 3).
+-define(R, 3).
 % timeout per state 10 seconds
 -define(TIMEOUT, 10000).
 
@@ -51,10 +51,12 @@ init([ReqId, From, Client, Key]) ->
                    client = Client,
                    key = Key,
                    preflist = PrefList},
-    [{IndexNode, _Type}] = PrefList,
-    riak_core_vnode_master:command(IndexNode,
-                                   {kv_get_request, Key, self()},
-                                   rclref_vnode_master),
+    Fn = fun(IndexNode) -> 
+                 riak_core_vnode_master:command(IndexNode,
+                                                {kv_get_request, Key, self()},
+                                                rclref_vnode_master)
+         end,
+    [Fn(IndexNode) || {IndexNode, _Type} <- PrefList],
     {ok, waiting, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 callback_mode() ->
@@ -69,7 +71,6 @@ terminate(Reason, _StateName, #state{req_id = ReqId, from = From, values = Value
     logger:info("(terminate) terminating get statem"),
     case Reason of
       normal ->
-          logger:info("Values: ~p", [Values]),
           From ! {ok, {ReqId, Values}};
       _ ->
           From ! {error, {ReqId, undefined}}
