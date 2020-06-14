@@ -96,7 +96,7 @@ waiting(state_timeout, hard_stop, State) ->
     {stop, waiting_timed_out, State};
 waiting(EventType, EventContent, State = #state{}) ->
     logger:debug("GetStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
-    {keep_state, State, [{state_timeout, ?TIMEOUT, hardstop}]}.
+    {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 % Internal Functions
 reqid() ->
