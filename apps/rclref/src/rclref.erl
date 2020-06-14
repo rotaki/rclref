@@ -21,4 +21,9 @@ ping() ->
 
 put(Key, Value) ->
     {ok, ReqId} = rclref_put_statem:put(node(), Key, Value),
-    logger:info(ReqId).
+    receive
+      {ok, ReqId} ->
+          logger:info("(put) success");
+      {error, ReqId} ->
+          logger:info("(put) error")
+    end.

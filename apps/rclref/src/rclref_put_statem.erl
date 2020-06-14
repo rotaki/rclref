@@ -73,7 +73,15 @@ waiting(cast,
         {ok, done_put},
         State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
     logger:info("(waiting) waiting state : done put"),
-    {keep_state, State};
+    Num_w = Num_w0 + 1,
+    NewState = State#state{num_w = Num_w},
+    case Num_w =:= ?W of
+      true ->
+          From ! {ok, ReqId},
+          {stop, min_store_finished, NewState};
+      false ->
+          {keep_state, NewState}
+    end;
 waiting(cast,
         {error, fail_put},
         State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
@@ -82,23 +90,6 @@ waiting(cast,
 waiting(_EventType, _EventContent, State = #state{}) ->
     logger:info("(waiting) waiting state : miscellaneous"),
     {keep_state, State}.
-
-%% waiting(cast,
-%%         {ok, done_put},
-%%         State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
-%%     logger:info("(waiting) waiting state with Num_w: ~p", [Num_w0]),
-%%     Num_w = Num_w0 + 1,
-%%     NewState = State#state{num_w = Num_w},
-%%     case Num_w =:= ?W of
-%%       true ->
-%%           From ! {ReqId, ok},
-%%           %TODO: stop
-%%           {stop, ok};
-%%       false ->
-%%           {keep_state, NewState}
-%%     end;
-%% waiting(cast, {error, fail_put}, State) ->
-%%     {keep_state, State}.
 
 % Internal Functions
 reqid() ->
