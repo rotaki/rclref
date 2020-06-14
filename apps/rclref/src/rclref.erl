@@ -21,4 +21,4 @@ ping() ->
 
 put(Key, Value) ->
     {ok, ReqId} = rclref_put_statem:put(node(), Key, Value),
-    io:format("Doing put ~p~n", [ReqId]).
+    logger:info(ReqId).

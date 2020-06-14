@@ -6,7 +6,7 @@
 -export([init/1]).
 
 start_put_statem(Args) ->
-    supervisor:start_child(?MODULE, Args).
+    supervisor:start_child(?MODULE, [Args]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
