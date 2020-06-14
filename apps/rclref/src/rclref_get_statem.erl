@@ -9,6 +9,7 @@
 -export([waiting/3]).
 -export([reqid/0]).
 
+%TODO: get these numbers from config
 -define(N, 3).
 -define(W, 3).
 -define(R, 3).
@@ -25,25 +26,22 @@ get(Client, Key) ->
 
 % Start and Stop
 start_link([ReqId, From, Client, Key]) ->
-    logger:info("(start_link) starting get statem"),
     gen_statem:start_link(?MODULE, [ReqId, From, Client, Key], []).
 
 stop(Pid, Reason) ->
-    logger:info("(stop) stopping get statem"),
+    logger:info("Stopping GetStatem, Pid:~p", [Pid]),
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
 done_get(Pid, Value) ->
-    logger:info("(done_get) Pid: ~p", [Pid]),
     gen_statem:cast(Pid, {done_get, Value}).
 
 fail_get(Pid) ->
-    logger:info("(fail_get) Pid: ~p", [Pid]),
     gen_statem:cast(Pid, fail_get).
 
 % Callbacks
 init([ReqId, From, Client, Key]) ->
-    logger:info("(init) initializing get statem"),
+    logger:info("Initializing GetStatem, Pid:~p", [self()]),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State = #state{req_id = ReqId,
@@ -51,7 +49,7 @@ init([ReqId, From, Client, Key]) ->
                    client = Client,
                    key = Key,
                    preflist = PrefList},
-    Fn = fun(IndexNode) -> 
+    Fn = fun (IndexNode) ->
                  riak_core_vnode_master:command(IndexNode,
                                                 {kv_get_request, Key, self()},
                                                 rclref_vnode_master)
@@ -60,15 +58,12 @@ init([ReqId, From, Client, Key]) ->
     {ok, waiting, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 callback_mode() ->
-    logger:info("(callback_mode)"),
     state_functions.
 
 code_change(_Vsn, StateName, State, _Extra) ->
-    logger:info("(code_change)"),
     {ok, StateName, State}.
 
 terminate(Reason, _StateName, #state{req_id = ReqId, from = From, values = Values}) ->
-    logger:info("(terminate) terminating get statem"),
     case Reason of
       normal ->
           From ! {ok, {ReqId, Values}};
@@ -80,7 +75,8 @@ terminate(Reason, _StateName, #state{req_id = ReqId, from = From, values = Value
 
 % State function
 waiting(cast, {done_get, Value}, State = #state{num_r = Num_r0, values = Values0}) ->
-    logger:info("(waiting) waiting state : done get"),
+    logger:info("GetStatem at WAITING state with event ~p:~p, at num_w: ~p",
+                [cast, done_get, Num_r0]),
     Num_r = Num_r0 + 1,
     Values = Values0 ++ [Value],
     NewState = State#state{num_r = Num_r, values = Values},
@@ -91,14 +87,15 @@ waiting(cast, {done_get, Value}, State = #state{num_r = Num_r0, values = Values0
       false ->
           {keep_state, NewState, [{state_timeout, ?TIMEOUT, hard_stop}]}
     end;
-waiting(cast, fail_get, State = #state{num_r = _Num_r0}) ->
-    logger:info("(waiting) waiting state : fail get"),
+waiting(cast, fail_get, State = #state{num_r = Num_r0}) ->
+    logger:info("GetStatem at WAITING state with event ~p:~p, at num_w: ~p",
+                [cast, fail_get, Num_r0]),
     {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]};
 waiting(state_timeout, hard_stop, State) ->
-    logger:info("(waiting) waiting state: timeout"),
+    logger:info("GetStatem at WAITING state with event ~p:~p", [state_timeout, hard_stop]),
     {stop, waiting_timed_out, State};
-waiting(_EventType, _EventContent, State = #state{}) ->
-    logger:info("(waiting) waiting state: miscellaneous"),
+waiting(EventType, EventContent, State = #state{}) ->
+    logger:info("GetStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
     {keep_state, State, [{state_timeout, ?TIMEOUT, hardstop}]}.
 
 % Internal Functions

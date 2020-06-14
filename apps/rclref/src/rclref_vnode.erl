@@ -9,27 +9,68 @@
 
 -ignore_xref([{start_vnode, 1}]).
 
--record(state, {partition}).
+-record(state, {index, mod, modstate}).
 
 %% API
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-init([Partition]) ->
-    {ok, #state{partition = Partition}}.
+init([Index]) ->
+    %TODO: Get model from config
+    Mod = rclref_ets_backend,
+    case Mod:start(Index, undefined) of
+      {ok, ModState} ->
+          logger:info("Successfully started ~p backend for index ~p", [Mod, Index]),
+          State = #state{index = Index, mod = Mod, modstate = ModState},
+          {ok, State};
+      {error, Reason} ->
+          logger:error("Failed to start ~p backend for index: ~p, error: ~p", [Mod, Index, Reason]),
+          {error, Reason}
+    end.
 
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
-    {reply, {pong, node(), State#state.partition}, State};
-handle_command({kv_put_request, Key, Value, Pid}, _Sender, State) ->
-    logger:info("(handle_command) kv_put_request, Key: ~p, Value: ~p", [Key, Value]),
-    rclref_put_statem:done_put(Pid),
-    {noreply, State};
-handle_command({kv_get_request, Key, Pid}, _Sender, State) ->
-    logger:info("(handle_command) kv_get_request, Key: ~p", [Key]),
-    Value = "temp",
-    rclref_get_statem:done_get(Pid, Value),
-    {noreply, State};
+    {reply, {pong, node(), State#state.index}, State};
+handle_command({kv_put_request, Key, Value, Pid},
+               _Sender,
+               State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
+    case Mod:put(Key, Value, ModState0) of
+      {ok, ModState1} ->
+          logger:info("Successfully put kv with key: ~p, value: ~p for index: ~p",
+                      [Key, Value, Index]),
+          rclref_put_statem:done_put(Pid),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1};
+      {error, Reason, ModState1} ->
+          logger:error("Failed to put kv with key: ~p, value: ~p for index: ~p, error: ~p",
+                       [Key, Value, Index, Reason]),
+          rclref_put_statem:fail_put(Pid),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1}
+    end;
+handle_command({kv_get_request, Key, Pid},
+               _Sender,
+               State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
+    case Mod:get(Key, ModState0) of
+      {ok, not_found, ModState1} ->
+          logger:info("Failed to get kv with key: ~p for index: ~p, error: ~p",
+                      [Key, Index, not_found]),
+
+          rclref_get_statem:fail_get(Pid),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1};
+      {ok, Value, ModState1} ->
+          logger:info("Successfully put kv with key: ~p for index: ~p", [Key, Index]),
+          rclref_get_statem:done_get(Pid, Value),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1};
+      {error, Reason, ModState1} ->
+          logger:error("Failed to get kv with key: ~p for index: ~p, error: ~p",
+                       [Key, Index, Reason]),
+          rclref_get_statem:fail_get(Pid),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1}
+    end;
 handle_command(Message, _Sender, State) ->
     logger:warning("unhandled_command ~p", [Message]),
     {noreply, State}.

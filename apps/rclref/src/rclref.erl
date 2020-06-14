@@ -4,8 +4,9 @@
 
 -ignore_xref([{ping, 0}]).
 
--define(TIMEOUT_PUT, 200000).
--define(TIMEOUT_GET, 200000).
+%TODO: Get these numbers from config
+-define(TIMEOUT_PUT, 5000).
+-define(TIMEOUT_GET, 5000).
 
 %% Public API
 

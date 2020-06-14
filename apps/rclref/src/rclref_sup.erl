@@ -2,22 +2,14 @@
 
 -behaviour(supervisor).
 
-%% API
 -export([start_link/0]).
-%% Supervisor callbacks
 -export([init/1]).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
-
+% API
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
-
+% Callbacks
 init(_Args) ->
     VMaster = {rclref_vnode_master,
                {riak_core_vnode_master, start_link, [rclref_vnode]},
