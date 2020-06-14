@@ -4,6 +4,8 @@
 
 -ignore_xref([{ping, 0}]).
 
+-define(TIMEOUT_PUT, 200000).
+
 %% Public API
 
 %% @doc Pings a random vnode to make sure communication is functional
@@ -25,5 +27,10 @@ put(Key, Value) ->
       {ok, ReqId} ->
           logger:info("(put) success");
       {error, ReqId} ->
-          logger:info("(put) error")
+          logger:info("(put) error");
+      {_, _} ->
+          logger:error("(put) invalid response")
+      after ?TIMEOUT_PUT ->
+              
+                logger:error("(put) timeout")
     end.

@@ -2,14 +2,18 @@
 
 -behaviour(supervisor).
 
--export([start_put_statem/1, start_link/0]).
+-export([start_put_statem/1, stop_put_statem/1, start_link/0]).
 -export([init/1]).
 
 start_put_statem(Args) ->
-    supervisor:start_child(?MODULE, [Args]).
+    {ok, _} = supervisor:start_child(?MODULE, [Args]).
+
+stop_put_statem(Pid) ->
+    {ok, _} = supervisor:terminate_child(?MODULE, Pid),
+    {ok, _} = supervisor:delete_child(?MODULE, Pid).
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    {ok, _} = supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                                                 %          callbacks          %

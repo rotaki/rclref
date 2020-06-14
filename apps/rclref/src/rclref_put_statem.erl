@@ -12,6 +12,8 @@
 -define(N, 1).
 -define(W, 1).
 -define(R, 1).
+% timeout per state 10 seconds
+-define(TIMEOUT, 20000).
 
 -record(state, {req_id, from, client, key, value, preflist, num_r = 0, num_w = 0}).
 
@@ -54,7 +56,7 @@ init([ReqId, From, Client, Key, Value]) ->
     riak_core_vnode_master:command(IndexNode,
                                    {kv_put_request, Key, Value, self()},
                                    rclref_vnode_master),
-    {ok, waiting, State}.
+    {ok, waiting, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 callback_mode() ->
     logger:info("(callback_mode)"),
@@ -64,32 +66,38 @@ code_change(_Vsn, StateName, State, _Extra) ->
     logger:info("(code_change)"),
     {ok, StateName, State}.
 
-terminate(_Reason, _StateName, _State) ->
+terminate(Reason, _StateName, #state{req_id = ReqId, from = From}) ->
     logger:info("(terminate) terminating put statem"),
+    case Reason of
+      normal ->
+          From ! {ok, ReqId};
+      _ ->
+          From ! {error, ReqId}
+    end,
+    rclref_put_statem_sup:stop_put_statem(self()),
     ok.
 
 % State function
-waiting(cast,
-        {ok, done_put},
-        State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
+waiting(cast, {ok, done_put}, State = #state{num_w = Num_w0}) ->
     logger:info("(waiting) waiting state : done put"),
     Num_w = Num_w0 + 1,
     NewState = State#state{num_w = Num_w},
     case Num_w =:= ?W of
       true ->
-          From ! {ok, ReqId},
-          {stop, min_store_finished, NewState};
+          {stop, normal, NewState};
       false ->
-          {keep_state, NewState}
+          {keep_state, NewState, [{state_timeout, ?TIMEOUT, hard_stop}]}
     end;
-waiting(cast,
-        {error, fail_put},
-        State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
+waiting(cast, {error, fail_put}, State = #state{num_w = _Num_w0}) ->
+    %TODO: count number of failures
     logger:info("(waiting) waiting state : fail put"),
-    {keep_state, State};
+    {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]};
+waiting(state_timeout, hard_stop, State) ->
+    logger:info("(waiting) waiting state : time out"),
+    {stop, waiting_timed_out, State};
 waiting(_EventType, _EventContent, State = #state{}) ->
     logger:info("(waiting) waiting state : miscellaneous"),
-    {keep_state, State}.
+    {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]}.
 
 % Internal Functions
 reqid() ->
