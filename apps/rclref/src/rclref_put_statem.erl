@@ -13,7 +13,7 @@
 -define(W, 1).
 -define(R, 1).
 % timeout per state 10 seconds
--define(TIMEOUT, 20000).
+-define(TIMEOUT, 10000).
 
 -record(state, {req_id, from, client, key, value, preflist, num_r = 0, num_w = 0}).
 
@@ -35,16 +35,16 @@ stop(Pid, Reason) ->
 % API (called by vnodes)
 done_put(Pid) ->
     logger:info("(done_put) Pid: ~p", [Pid]),
-    gen_statem:cast(Pid, {ok, done_put}).
+    gen_statem:cast(Pid, done_put).
 
 fail_put(Pid) ->
     logger:info("(fail_put) Pid: ~p", [Pid]),
-    gen_statem:cast(Pid, {error, fail_put}).
+    gen_statem:cast(Pid, fail_put).
 
 % Callbacks
 init([ReqId, From, Client, Key, Value]) ->
     logger:info("(init) initializing put statem"),
-    DocIdx = riak_core_util:chash_key({Client, Key}),
+    DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State = #state{req_id = ReqId,
                    from = From,
@@ -78,7 +78,7 @@ terminate(Reason, _StateName, #state{req_id = ReqId, from = From}) ->
     ok.
 
 % State function
-waiting(cast, {ok, done_put}, State = #state{num_w = Num_w0}) ->
+waiting(cast, done_put, State = #state{num_w = Num_w0}) ->
     logger:info("(waiting) waiting state : done put"),
     Num_w = Num_w0 + 1,
     NewState = State#state{num_w = Num_w},
@@ -88,12 +88,12 @@ waiting(cast, {ok, done_put}, State = #state{num_w = Num_w0}) ->
       false ->
           {keep_state, NewState, [{state_timeout, ?TIMEOUT, hard_stop}]}
     end;
-waiting(cast, {error, fail_put}, State = #state{num_w = _Num_w0}) ->
+waiting(cast, fail_put, State = #state{num_w = _Num_w0}) ->
     %TODO: count number of failures
     logger:info("(waiting) waiting state : fail put"),
     {keep_state, State, [{state_timeout, ?TIMEOUT, hard_stop}]};
 waiting(state_timeout, hard_stop, State) ->
-    logger:info("(waiting) waiting state : time out"),
+    logger:info("(waiting) waiting state : timeout"),
     {stop, waiting_timed_out, State};
 waiting(_EventType, _EventContent, State = #state{}) ->
     logger:info("(waiting) waiting state : miscellaneous"),

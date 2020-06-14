@@ -31,4 +31,10 @@ init(_Args) ->
                  infinity,
                  supervisor,
                  [rclref_put_statem_sup]},
-    {ok, {{one_for_one, 5, 10}, [VMaster, PutStatem]}}.
+    GetStatem = {rclref_get_statem_sup,
+                 {rclref_get_statem_sup, start_link, []},
+                 permanent,
+                 infinity,
+                 supervisor,
+                 [rclref_get_statem_sup]},
+    {ok, {{one_for_one, 5, 10}, [VMaster, PutStatem, GetStatem]}}.

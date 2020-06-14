@@ -1,10 +1,11 @@
 -module(rclref).
 
--export([ping/0, put/2]).
+-export([ping/0, put/2, get/1]).
 
 -ignore_xref([{ping, 0}]).
 
 -define(TIMEOUT_PUT, 200000).
+-define(TIMEOUT_GET, 200000).
 
 %% Public API
 
@@ -31,6 +32,19 @@ put(Key, Value) ->
       {_, _} ->
           logger:error("(put) invalid response")
       after ?TIMEOUT_PUT ->
-              
                 logger:error("(put) timeout")
+    end.
+
+get(Key) ->
+    {ok, ReqId} = rclref_get_statem:get(node(), Key),
+    receive
+      {ok, {ReqId, Value}} ->
+          logger:info("(get) success"),
+          Value;
+      {error, {ReqId, _}} ->
+          logger:info("(get) error");
+      {_, _} ->
+          logger:error("(get) invalid response")
+      after ?TIMEOUT_GET ->
+                logger:error("(get) timeout")
     end.
