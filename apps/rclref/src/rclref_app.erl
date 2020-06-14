@@ -14,7 +14,6 @@ start(_StartType, _StartArgs) ->
       {ok, Pid} ->
           ok = riak_core:register([{vnode_module, rclref_vnode}]),
           ok = riak_core_node_watcher:service_up(rclref, self()),
-
           {ok, Pid};
       {error, Reason} ->
           {error, Reason}

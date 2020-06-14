@@ -1,8 +1,11 @@
 -module(rclref).
 
--export([ping/0]).
+-export([ping/0, put/2, get/1]).
 
 -ignore_xref([{ping, 0}]).
+
+-define(TIMEOUT_PUT, 200000).
+-define(TIMEOUT_GET, 200000).
 
 %% Public API
 
@@ -18,3 +21,30 @@ ping() ->
     PrefList = riak_core_apl:get_primary_apl(DocIdx, N, rclref),
     [{IndexNode, _Type}] = PrefList,
     riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rclref_vnode_master).
+
+put(Key, Value) ->
+    {ok, ReqId} = rclref_put_statem:put(node(), Key, Value),
+    receive
+      {ok, ReqId} ->
+          logger:info("(put) success");
+      {error, ReqId} ->
+          logger:info("(put) error");
+      {_, _} ->
+          logger:error("(put) invalid response")
+      after ?TIMEOUT_PUT ->
+                logger:error("(put) timeout")
+    end.
+
+get(Key) ->
+    {ok, ReqId} = rclref_get_statem:get(node(), Key),
+    receive
+      {ok, {ReqId, Value}} ->
+          logger:info("(get) success"),
+          Value;
+      {error, {ReqId, _}} ->
+          logger:info("(get) error");
+      {_, _} ->
+          logger:error("(get) invalid response")
+      after ?TIMEOUT_GET ->
+                logger:error("(get) timeout")
+    end.
