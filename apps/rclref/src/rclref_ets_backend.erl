@@ -35,7 +35,7 @@ delete(Key, State = #state{table_id = TableId}) ->
     {ok, State}.
 
 drop(State = #state{table_id = TableId}) ->
-    true =  ets:delete_all_objects(TableId),
+    true = ets:delete_all_objects(TableId),
     {ok, State}.
 
 is_empty(_State = #state{table_id = TableId}) ->
@@ -45,7 +45,9 @@ fold_keys(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
     ets:foldl(Fun, Acc0, TableId).
 
 fold_objects(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
-    FoldObjectsFun = fun({K, V}, A) -> Fun(K, V, A) end,
+    FoldObjectsFun = fun ({K, V}, A) ->
+                             Fun(K, V, A)
+                     end,
     ets:foldl(FoldObjectsFun, Acc0, TableId).
 
 status(_State = #state{table_id = TableId}) ->

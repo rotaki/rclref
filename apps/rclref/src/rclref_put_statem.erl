@@ -15,17 +15,20 @@
 % timeout per state 5 seconds
 -define(TIMEOUT, 5000).
 
--record(state, {req_id :: non_neg_integer(), 
-                from :: pid(), 
-                client :: node(), 
-                key :: riak_object:key(), 
-                value :: riak_object:value(), 
-                preflist :: [term()], 
-                num_r = 0 :: non_neg_integer(), 
-                num_w = 0 :: non_neg_integer()}).
+-record(state,
+        {req_id :: non_neg_integer(),
+         from :: pid(),
+         client :: node(),
+         key :: riak_object:key(),
+         value :: riak_object:value(),
+         preflist :: [term()],
+         num_r = 0 :: non_neg_integer(),
+         num_w = 0 :: non_neg_integer()}).
 
 %% Call the supervisor to start the statem
--spec put(Client :: node(), RObj :: riak_object:riak_object(), Options :: [term()]) -> {ok, ReqId :: non_neg_integer()}.
+-spec put(Client :: node(),
+          RObj :: riak_object:riak_object(),
+          Options :: [term()]) -> {ok, ReqId :: non_neg_integer()}.
 put(Client, RObj, Options) ->
     ReqId = reqid(),
     {ok, _} = rclref_put_statem_sup:start_put_statem([ReqId, self(), Client, RObj, Options]),
@@ -89,7 +92,7 @@ waiting(cast, done_put, State = #state{req_id = ReqId, from = From, num_w = Num_
     NewState = State#state{num_w = Num_w},
     case Num_w =:= ?W of
       true ->
-            From ! {ReqId, ok},
+          From ! {ReqId, ok},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
