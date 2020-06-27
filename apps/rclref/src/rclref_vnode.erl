@@ -18,15 +18,10 @@ start_vnode(I) ->
 init([Index]) ->
     %TODO: Get model from config
     Mod = rclref_ets_backend,
-    case Mod:start(Index, undefined) of
-      {ok, ModState} ->
-          logger:debug("Successfully started ~p backend for index ~p", [Mod, Index]),
-          State = #state{index = Index, mod = Mod, modstate = ModState},
-          {ok, State};
-      {error, Reason} ->
-          logger:error("Failed to start ~p backend for index: ~p, error: ~p", [Mod, Index, Reason]),
-          {error, Reason}
-    end.
+    {ok, ModState} = Mod:start(Index, undefined),
+    logger:debug("Successfully started ~p backend for index ~p", [Mod, Index]),
+    State = #state{index = Index, mod = Mod, modstate = ModState},
+    {ok, State}.
 
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
@@ -44,7 +39,7 @@ handle_command({kv_put_request, Key, Value, Pid},
       {error, Reason, ModState1} ->
           logger:error("Failed to put kv with key: ~p, value: ~p for index: ~p, error: ~p",
                        [Key, Value, Index, Reason]),
-          rclref_put_statem:fail_put(Pid),
+          rclref_put_statem:failed_put(Pid),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1}
     end;
@@ -56,7 +51,7 @@ handle_command({kv_get_request, Key, Pid},
           logger:debug("Failed to get kv with key: ~p for index: ~p, error: ~p",
                        [Key, Index, not_found]),
 
-          rclref_get_statem:fail_get(Pid),
+          rclref_get_statem:failed_get(Pid),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {ok, Value, ModState1} ->
@@ -67,7 +62,7 @@ handle_command({kv_get_request, Key, Pid},
       {error, Reason, ModState1} ->
           logger:error("Failed to get kv with key: ~p for index: ~p, error: ~p",
                        [Key, Index, Reason]),
-          rclref_get_statem:fail_get(Pid),
+          rclref_get_statem:failed_get(Pid),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1}
     end;

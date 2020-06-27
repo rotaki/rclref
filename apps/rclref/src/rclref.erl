@@ -1,7 +1,6 @@
 -module(rclref).
-
--export([ping/0, put/2, get/1, delete/1]).
-
+-compile({no_auto_import,[put/2]}).
+-export([ping/0, put/1, put/2, get/1, get/2, delete/1]).
 -ignore_xref([{ping, 0}]).
 
 %TODO: Get these numbers from config
@@ -24,33 +23,43 @@ ping() ->
     [{IndexNode, _Type}] = PrefList,
     riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rclref_vnode_master).
 
-put(Key, Value) ->
-    {ok, ReqId} = rclref_put_statem:put(node(), Key, Value),
-    receive
-      {ok, ReqId} ->
-          logger:info("(put) success");
-      {error, ReqId} ->
-          logger:info("(put) error");
-      {_, _} ->
-          logger:error("(put) invalid response")
-      after ?TIMEOUT_PUT ->
-                logger:error("(put) timeout")
-    end.
+-spec put(riak_object:riak_object()) -> ok | {error, timeout} | {error, term()}.
+put(RObj) ->
+    put(RObj, []).
 
+-spec put(riak_object:riak_object(), Options :: [term()]) -> ok | {error, timeout} | {error, term()}.
+put(RObj, Options) when is_list(Options)->
+    {ok, ReqId} = rclref_put_statem:put(node(), RObj, Options),
+    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
+    wait_for_reqid(ReqId, Timeout).
+
+-spec get(riak_object:key()) -> {ok, riak_object:riak_object()} | {error, notfound} | {error, timeout} | {error, term()}.
 get(Key) ->
-    {ok, ReqId} = rclref_get_statem:get(node(), Key),
-    receive
-      {ok, {ReqId, Value}} ->
-          logger:info("(get) success"),
-          Value;
-      {error, {ReqId, _}} ->
-          logger:info("(get) error");
-      {_, _} ->
-          logger:error("(get) invalid response")
-      after ?TIMEOUT_GET ->
-                logger:error("(get) timeout")
-    end.
+    get(Key, []).
 
+-spec get(riak_object:key(), Options :: [term()]) -> {ok, riak_object:riak_object()} | {error, notfound} | {error, timeout} | {error, term()}.
+get(Key, Options) when is_list(Options) ->
+    {ok, ReqId} = rclref_get_statem:get(node(), Key, Options),
+    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
+    wait_for_reqid(ReqId, Timeout).
+
+-spec delete(riak_object:key()) -> ok | {error, timeout} | {error, term()}.
 delete(Key) ->
     % keep it as a tombstone
-    rclref:put(Key, undefined).
+    delete(Key, []).
+
+-spec delete(riak_obejct:key(), Options :: [term()]) -> ok | {error, timeout} | {error, term()}.
+delete(Key, Options) ->
+    RObj = riak_object:new(Key, undefined),
+    put(RObj, Options).
+
+% private
+-spec wait_for_reqid(non_neg_integer(), timeout()) -> {error, timeout} | any().
+wait_for_reqid(ReqId, Timeout) ->
+    receive
+        {ReqId, Response} -> Response
+    after Timeout ->
+            {error, timeout}
+    end.
+    
+

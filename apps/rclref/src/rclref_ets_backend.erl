@@ -27,28 +27,16 @@ get(Key, State = #state{table_id = TableId}) ->
     end.
 
 put(Key, Value, State = #state{table_id = TableId}) ->
-    case ets:insert(TableId, {Key, Value}) of
-      true ->
-          {ok, State};
-      Reason ->
-          {error, Reason, State}
-    end.
+    true = ets:insert(TableId, {Key, Value}),
+    {ok, State}.
 
 delete(Key, State = #state{table_id = TableId}) ->
-    case ets:delete(TableId, Key) of
-      true ->
-          {ok, State};
-      Reason ->
-          {error, Reason}
-    end.
+    true = ets:delete(TableId, Key),
+    {ok, State}.
 
 drop(State = #state{table_id = TableId}) ->
-    case ets:delete_all_objects(TableId) of
-      true ->
-          {ok, State};
-      Reason ->
-          {error, Reason}
-    end.
+    true =  ets:delete_all_objects(TableId),
+    {ok, State}.
 
 is_empty(_State = #state{table_id = TableId}) ->
     ets:first(TableId) =:= '$end_of_table'.
@@ -57,7 +45,8 @@ fold_keys(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
     ets:foldl(Fun, Acc0, TableId).
 
 fold_objects(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
-    ets:foldl(Fun, Acc0, TableId).
+    FoldObjectsFun = fun({K, V}, A) -> Fun(K, V, A) end,
+    ets:foldl(FoldObjectsFun, Acc0, TableId).
 
 status(_State = #state{table_id = TableId}) ->
     ets:info(TableId).

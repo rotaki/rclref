@@ -9,8 +9,8 @@ start_put_statem(Args) ->
     {ok, _} = supervisor:start_child(?MODULE, [Args]).
 
 stop_put_statem(Pid) ->
-    {ok, _} = supervisor:terminate_child(?MODULE, Pid),
-    {ok, _} = supervisor:delete_child(?MODULE, Pid).
+    ok = supervisor:terminate_child(?MODULE, Pid),
+    ok = supervisor:delete_child(?MODULE, Pid).
 
 start_link() ->
     {ok, _} = supervisor:start_link({local, ?MODULE}, ?MODULE, []).

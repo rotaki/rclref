@@ -7,10 +7,7 @@
 -type fold_opts() :: [term()].
 -type fold_result() :: {ok, fold_acc()} | {async, fun()} | {error, term()}.
 
--callback start(PartitionIndex :: non_neg_integer(), Config :: [{atom(), term()}]) -> {ok,
-                                                                                       state()} |
-                                                                                      {error,
-                                                                                       term()}.
+-callback start(PartitionIndex :: non_neg_integer(), Config :: [{atom(), term()}]) -> {ok, state()}.
 -callback stop(state()) -> ok.
 -callback get(riak_object:key(), state()) -> {ok, Value :: term(), state()} |
                                              {ok, not_found, state()} |
