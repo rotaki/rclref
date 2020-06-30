@@ -31,8 +31,9 @@ compile:
 clean:
 	$(REBAR) clean
 
-test:
-	$(REBAR) ct
+ct:
+	$(REBAR) ct --name test@127.0.0.1
+
 
 devrel1:
 	$(REBAR) as dev1 release
