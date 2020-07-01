@@ -8,21 +8,21 @@ Build
 
 ::
 
-    rebar3 release
+    make release
 
 Test
 ----
 
 ::
 
-    rebar3 ct
+    make ct
 
 Run
 ---
 
 ::
 
-    ./_build/default/rel/rclref/bin/rclref console
+    make console
 
 Try
 ---

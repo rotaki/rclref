@@ -56,7 +56,8 @@ handle_command({kv_get_request, Key, Pid},
           {noreply, State1};
       {ok, Value, ModState1} ->
           logger:debug("Successfully put kv with key: ~p for index: ~p", [Key, Index]),
-          rclref_get_statem:done_get(Pid, Value),
+          RObj = riak_object:new(Key, Value),
+          rclref_get_statem:done_get(Pid, RObj),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {error, Reason, ModState1} ->

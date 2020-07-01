@@ -19,11 +19,10 @@
         {req_id :: non_neg_integer(),
          from :: pid(),
          client :: node(),
-         key :: riak_object:key(),
-         value :: riak_object:value(),
          preflist :: [term()],
          num_r = 0 :: non_neg_integer(),
-         num_w = 0 :: non_neg_integer()}).
+         num_w = 0 :: non_neg_integer(),
+         riak_objects :: [riak_object:riak_object()]}).
 
 %% Call the supervisor to start the statem
 -spec put(Client :: node(),
@@ -60,12 +59,7 @@ init([ReqId, From, Client, RObj, Options]) ->
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
-    State = #state{req_id = ReqId,
-                   from = From,
-                   client = Client,
-                   key = Key,
-                   value = Value,
-                   preflist = PrefList},
+    State = #state{req_id = ReqId, from = From, client = Client, preflist = PrefList},
     Fn = fun (IndexNode) ->
                  riak_core_vnode_master:command(IndexNode,
                                                 {kv_put_request, Key, Value, self()},

@@ -45,7 +45,7 @@ put(RObj, Options) when is_list(Options) ->
 get(Key) ->
     get(Key, []).
 
--spec get(riak_object:key(), Options :: [term()]) -> {ok, riak_object:riak_object()} |
+-spec get(riak_object:key(), Options :: [term()]) -> {ok, [riak_object:riak_object()]} |
                                                      {error, notfound} |
                                                      {error, timeout} |
                                                      {error, term()}.

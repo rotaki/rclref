@@ -20,11 +20,10 @@
         {req_id :: non_neg_integer(),
          from :: pid(),
          client :: node(),
-         key :: riak_object:key(),
-         values = [] :: [term()],
          preflist :: [term()],
          num_r = 0 :: non_neg_integer(),
-         num_w = 0 :: non_neg_integer()}).
+         num_w = 0 :: non_neg_integer(),
+         riak_objects :: [riak_object:riak_obejct()]}).
 
 % Call the supervisor to start the statem
 -spec get(Client :: node(), Key :: riak_object:key(), Options :: [term()]) -> {ok,
@@ -45,9 +44,9 @@ stop(Pid, Reason) ->
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
--spec done_get(pid(), riak_object:value()) -> ok.
-done_get(Pid, Value) ->
-    gen_statem:cast(Pid, {done_get, Value}).
+-spec done_get(pid(), riak_object:riak_object()) -> ok.
+done_get(Pid, RObj) ->
+    gen_statem:cast(Pid, {done_get, RObj}).
 
 -spec failed_get(pid()) -> ok.
 failed_get(Pid) ->
@@ -62,8 +61,8 @@ init([ReqId, From, Client, Key, Options]) ->
     State = #state{req_id = ReqId,
                    from = From,
                    client = Client,
-                   key = Key,
-                   preflist = PrefList},
+                   preflist = PrefList,
+                   riak_objects = []},
     Fn = fun (IndexNode) ->
                  riak_core_vnode_master:command(IndexNode,
                                                 {kv_get_request, Key, self()},
@@ -84,17 +83,17 @@ terminate(Reason, _StateName, _State) ->
 
 % State function
 waiting(cast,
-        {done_get, Value},
-        State = #state{from = From, req_id = ReqId, num_r = Num_r0, values = Values0}) ->
+        {done_get, RObj},
+        State = #state{from = From, req_id = ReqId, num_r = Num_r0, riak_objects = RObjs0}) ->
     logger:debug("GetStatem at WAITING state with event ~p:~p, at num_w: ~p",
                  [cast, done_get, Num_r0]),
     Num_r = Num_r0 + 1,
-    Values = Values0 ++ [Value],
-    NewState = State#state{num_r = Num_r, values = Values},
+    RObjs = RObjs0 ++ [RObj],
+    NewState = State#state{num_r = Num_r, riak_objects = RObjs},
     case Num_r =:= ?R of
       true ->
           %TODO: Next state for read repair
-          From ! {ReqId, Values},
+          From ! {ReqId, RObjs},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
