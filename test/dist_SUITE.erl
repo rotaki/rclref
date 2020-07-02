@@ -13,12 +13,13 @@ init_per_suite(Config) ->
     Names = [dev1, dev2, dev3, dev4],
     % Start Nodes
     NodesWithStatus = node_utils:pmap(fun(Name) -> node_utils:start_node(Name, []) end, Names),
-    Nodes = lists:map(fun({connect, Node}) -> Node end, NodesWithStatus),
-    % check alive
-    [pong = net_adm:ping(Node) || Node <- Nodes],
+    Nodes = [Node || {connect, Node} <- NodesWithStatus],
     [{nodes, Nodes} | Config].
 
 end_per_suite(Config) ->
+    % kill nodes
+    Nodes = ?config(nodes, Config),
+    node_utils:kill_nodes(Nodes),
     Config.
 
 % test put and get in distributed nodes
@@ -37,11 +38,3 @@ put_and_get(Config) ->
     % check values
     [Value = GotValue || {Value, GotValue} <- lists:zip(Values, GotValues)],
     ok.
-
-    
-
-
-
-
-
-
