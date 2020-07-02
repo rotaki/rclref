@@ -5,14 +5,16 @@
 -export([all/0, init_per_testcase/2, end_per_testcase/2]).
 -export([kill_nodes/1, brutal_kill_nodes/1, kill_and_restart_nodes/1]).
 
-
 all() ->
     [kill_nodes, brutal_kill_nodes, kill_and_restart_nodes].
 
 init_per_testcase(_, Config) ->
     Names = [dev1, dev2, dev3, dev4],
     % start Nodes
-    NodesWithStatus = node_utils:pmap(fun(Name) -> node_utils:start_node(Name, []) end, Names),
+    NodesWithStatus = node_utils:pmap(fun (Name) ->
+                                              node_utils:start_node(Name, [])
+                                      end,
+                                      Names),
     Nodes = [Node || {connect, Node} <- NodesWithStatus],
     % check alive
     [pong = net_adm:ping(Node) || Node <- Nodes],
@@ -36,7 +38,6 @@ brutal_kill_nodes(Config) ->
     % check dead
     [pang = net_adm:ping(Node) || Node <- KilledNodes],
     ok.
-    
 
 kill_and_restart_nodes(Config) ->
     Nodes = ?config(nodes, Config),
@@ -45,6 +46,3 @@ kill_and_restart_nodes(Config) ->
     % check alive
     [pong = net_adm:ping(Node) || Node <- NewNodes],
     ok.
-
-
-

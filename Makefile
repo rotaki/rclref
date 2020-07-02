@@ -12,6 +12,9 @@ release:
 	$(REBAR) release
 	mkdir -p $(RELPATH)/../rclref_config
 
+dialyzer:
+	$(REBAR) dialyzer
+
 format:
 	$(REBAR) format
 
@@ -31,7 +34,7 @@ compile:
 clean:
 	$(REBAR) clean
 
-ct:
+ct: format dialyzer
 	$(REBAR) ct --name test@127.0.0.1
 
 
