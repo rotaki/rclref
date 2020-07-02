@@ -26,35 +26,36 @@ ping() ->
     [{IndexNode, _Type}] = PrefList,
     riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rclref_vnode_master).
 
--spec put(riak_object:riak_object()) -> ok | {error, timeout} | {error, term()}.
+-spec put(rclref_object:riak_object()) -> ok | {error, timeout} | {error, term()}.
 put(RObj) ->
     put(RObj, []).
 
--spec put(riak_object:riak_object(), Options :: [term()]) -> ok |
-                                                             {error, timeout} |
-                                                             {error, term()}.
+-spec put(rclref_object:riak_object(), Options :: [term()]) -> ok |
+                                                               {error, timeout} |
+                                                               {error, term()}.
 put(RObj, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_put_statem:put(node(), RObj, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
     wait_for_reqid(ReqId, Timeout).
 
--spec get(riak_object:key()) -> {ok, riak_object:riak_object()} |
-                                {error, notfound} |
-                                {error, timeout} |
-                                {error, term()}.
+-spec get(rclref_object:key()) -> {ok, rclref_object:riak_object()} |
+                                  {error, notfound} |
+                                  {error, timeout} |
+                                  {error, term()}.
 get(Key) ->
     get(Key, []).
 
--spec get(riak_object:key(), Options :: [term()]) -> {ok, [riak_object:riak_object()]} |
-                                                     {error, notfound} |
-                                                     {error, timeout} |
-                                                     {error, term()}.
+-spec get(rclref_object:key(), Options :: [term()]) -> {ok,
+                                                        [rclref_object:riak_object()]} |
+                                                       {error, notfound} |
+                                                       {error, timeout} |
+                                                       {error, term()}.
 get(Key, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_get_statem:get(node(), Key, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
     wait_for_reqid(ReqId, Timeout).
 
--spec delete(riak_object:key()) -> ok | {error, timeout} | {error, term()}.
+-spec delete(rclref_object:key()) -> ok | {error, timeout} | {error, term()}.
 delete(Key) ->
     % keep it as a tombstone
     delete(Key, []).
@@ -63,7 +64,7 @@ delete(Key) ->
                                                         {error, timeout} |
                                                         {error, term()}.
 delete(Key, Options) ->
-    RObj = riak_object:new(Key, undefined),
+    RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
 
 % private

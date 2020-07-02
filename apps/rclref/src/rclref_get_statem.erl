@@ -23,12 +23,12 @@
          preflist :: [term()],
          num_r = 0 :: non_neg_integer(),
          num_w = 0 :: non_neg_integer(),
-         riak_objects :: [riak_object:riak_obejct()]}).
+         riak_objects :: [rclref_object:riak_obejct()]}).
 
 % Call the supervisor to start the statem
--spec get(Client :: node(), Key :: riak_object:key(), Options :: [term()]) -> {ok,
-                                                                               ReqId ::
-                                                                                   non_neg_integer()}.
+-spec get(Client :: node(), Key :: rclref_object:key(), Options :: [term()]) -> {ok,
+                                                                                 ReqId ::
+                                                                                     non_neg_integer()}.
 get(Client, Key, Options) ->
     ReqId = reqid(),
     {ok, _} = rclref_get_statem_sup:start_get_statem([ReqId, self(), Client, Key, Options]),
@@ -44,7 +44,7 @@ stop(Pid, Reason) ->
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
--spec done_get(pid(), riak_object:riak_object()) -> ok.
+-spec done_get(pid(), rclref_object:riak_object()) -> ok.
 done_get(Pid, RObj) ->
     gen_statem:cast(Pid, {done_get, RObj}).
 

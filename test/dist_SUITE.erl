@@ -29,12 +29,12 @@ put_and_get(Config) ->
     Nodes = ?config(nodes, Config),
     Keys = ["key--" ++ atom_to_list(Node) || Node <- Nodes],
     Values = ["value--" ++ atom_to_list(Node) || Node <- Nodes],
-    RObjs = [riak_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
+    RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
     [ok = rpc:call(Node, rclref, put, [RObj]) || {Node, RObj} <- lists:zip(Nodes, RObjs)],
 
     % normal get
     GotRObjs = [lists:nth(1, rpc:call(Node, rclref, get, [Key])) || {Node, Key} <- lists:zip(Nodes, Keys)],
-    GotValues = [riak_object:value(RObj) || RObj <- GotRObjs],
+    GotValues = [rclref_object:value(RObj) || RObj <- GotRObjs],
     % check values
     [Value = GotValue || {Value, GotValue} <- lists:zip(Values, GotValues)],
     ok.

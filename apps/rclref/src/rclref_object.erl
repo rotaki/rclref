@@ -1,4 +1,4 @@
--module(riak_object).
+-module(rclref_object).
 
 -export_type([key/0, value/0, riak_object/0]).
 

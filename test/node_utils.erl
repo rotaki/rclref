@@ -1,7 +1,7 @@
 -module(node_utils).
 
 -export([start_node/2, kill_and_restart_nodes/2, kill_nodes/1, brutal_kill_nodes/1, restart_nodes/2]).
--export([get_node_name/1, pmap/2, set_up_nodes_common/1, kill_nodes_common/1, log_config/1, web_ports/1]).
+-export([get_node_name/1, pmap/2, log_config/1, web_ports/1]).
 
 
 -spec start_node(atom(), [tuple()]) -> {connect, node()} | {ready, node()}.
@@ -107,19 +107,6 @@ pmap(F, L) ->
     L2 = [receive {pmap, N, R} -> {N, R} end || _ <- L],
     {_, L3} = lists:unzip(lists:keysort(1, L2)),
     L3.
-
-
--spec set_up_nodes_common([tuple()]) -> ok.
-set_up_nodes_common(Config) ->
-    Nodes = [dev1, dev2, dev3, dev4],
-    pmap(fun(N) -> start_node(N, Config) end, Nodes),
-    ok.
-
--spec kill_nodes_common([tuple()]) -> ok.
-kill_nodes_common(Config) ->
-    Nodes = [dev1, dev2, dev3, dev4],
-    pmap(fun(N) -> kill_nodes(N) end, Nodes),
-    ok.
     
 log_config(LogDir) ->
     DebugConfig = #{level => debug,

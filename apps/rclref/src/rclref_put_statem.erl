@@ -22,11 +22,11 @@
          preflist :: [term()],
          num_r = 0 :: non_neg_integer(),
          num_w = 0 :: non_neg_integer(),
-         riak_objects :: [riak_object:riak_object()]}).
+         riak_objects :: [rclref_object:riak_object()]}).
 
 %% Call the supervisor to start the statem
 -spec put(Client :: node(),
-          RObj :: riak_object:riak_object(),
+          RObj :: rclref_object:riak_object(),
           Options :: [term()]) -> {ok, ReqId :: non_neg_integer()}.
 put(Client, RObj, Options) ->
     ReqId = reqid(),
@@ -54,8 +54,8 @@ failed_put(Pid) ->
 % Callbacks
 init([ReqId, From, Client, RObj, Options]) ->
     logger:info("Initializing PutStatem, Pid:~p", [self()]),
-    Key = riak_object:key(RObj),
-    Value = riak_object:value(RObj),
+    Key = rclref_object:key(RObj),
+    Value = rclref_object:value(RObj),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
