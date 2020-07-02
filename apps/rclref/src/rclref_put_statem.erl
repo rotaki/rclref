@@ -22,7 +22,7 @@
          preflist :: [term()],
          num_r = 0 :: non_neg_integer(),
          num_w = 0 :: non_neg_integer(),
-         riak_objects :: [rclref_object:riak_object()]}).
+         riak_objects = [] :: [rclref_object:riak_object()]}).
 
 %% Call the supervisor to start the statem
 -spec put(Client :: node(),
