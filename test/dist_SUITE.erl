@@ -4,10 +4,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([all/0, init_per_suite/1, end_per_suite/1]).
--export([put_and_get/1]).
+-export([node_join_test/1]).
 
 all() ->
-    [put_and_get].
+    [node_join_test].
 
 init_per_suite(Config) ->
     % start application in master node
@@ -33,7 +33,7 @@ end_per_suite(Config) ->
 
 % test put and get in distributed nodes
 % more will be added
-put_and_get(Config) ->
+node_join_test(Config) ->
     Names = ?config(names, Config),
     Nodes = ?config(nodes, Config),
     % put
@@ -43,8 +43,10 @@ put_and_get(Config) ->
     RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
     % put rclref_objects into nodes respectively
     % node dev1 puts {key--dev1, value--dev1}, dev2 puts {key--dev2, value--dev2}, dev3...
-    [ok = rpc:call(Node, rclref, put, [RObj]) || {Node, RObj} <- lists:zip(Nodes, RObjs)],
-
+    lists:map(fun ({Node, RObj}) ->
+                      ?assertEqual(ok, rpc:call(Node, rclref, put, [RObj]))
+              end,
+              lists:zip(Nodes, RObjs)),
     % get
     % node dev1 gets key--dev4, dev2 gets key--dev3, dev3 ...
     % rclref:get will return several copies of the riak_objects depending on n_val
