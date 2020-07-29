@@ -9,7 +9,7 @@ all() ->
     [kill_nodes, brutal_kill_nodes, kill_and_restart_nodes].
 
 init_per_testcase(_, Config) ->
-    Names = [dev1, dev2, dev3, dev4],
+    Names = [node1, node2, node3, node4],
     % start Nodes
     NodesWithStatus = node_utils:pmap(fun (Name) ->
                                               node_utils:start_node(Name, [])
@@ -26,7 +26,7 @@ end_per_testcase(_, Config) ->
 kill_nodes(Config) ->
     Nodes = ?config(nodes, Config),
     % kill nodes
-    KilledNodes = node_utils:kill_nodes(Nodes),
+    KilledNodes = node_utils:brutal_kill_nodes(Nodes),
     % check dead
     [pang = net_adm:ping(Node) || Node <- KilledNodes],
     ok.

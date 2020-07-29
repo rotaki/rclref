@@ -173,12 +173,12 @@ log_config(LogDir) ->
 
 web_ports(Name) ->
     case Name of
-      dev1 ->
+      node1 ->
           10015;
-      dev2 ->
+      node2 ->
           10025;
-      dev3 ->
+      node3 ->
           10035;
-      dev4 ->
+      node4 ->
           10045
     end.

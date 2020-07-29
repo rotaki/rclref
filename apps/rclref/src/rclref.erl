@@ -8,8 +8,8 @@
 
 %TODO: Get these numbers from config
 %TODO: Make state timeout compatible with the base timeout
--define(TIMEOUT_PUT, 2000).
--define(TIMEOUT_GET, 2000).
+-define(TIMEOUT_PUT, rclref_config:timeout_put()).
+-define(TIMEOUT_GET, rclref_config:timeout_get()).
 
 %% Public API
 
@@ -39,7 +39,7 @@ put(RObj, Options) when is_list(Options) ->
     wait_for_reqid(ReqId, Timeout).
 
 -spec get(rclref_object:key()) -> {ok, rclref_object:riak_object()} |
-                                  {error, notfound} |
+                                  {error, not_found} |
                                   {error, timeout} |
                                   {error, term()}.
 get(Key) ->
@@ -47,7 +47,7 @@ get(Key) ->
 
 -spec get(rclref_object:key(), Options :: [term()]) -> {ok,
                                                         [rclref_object:riak_object()]} |
-                                                       {error, notfound} |
+                                                       {error, not_found} |
                                                        {error, timeout} |
                                                        {error, term()}.
 get(Key, Options) when is_list(Options) ->

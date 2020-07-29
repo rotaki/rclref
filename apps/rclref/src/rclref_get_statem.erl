@@ -4,25 +4,24 @@
 
 -export([get/3]).
 -export([start_link/1, stop/2]).
--export([done_get/2, failed_get/1]).
+-export([result_of_get/2]).
 -export([init/1, callback_mode/0, terminate/3, code_change/4]).
 -export([waiting/3]).
 -export([reqid/0]).
 
-%TODO: get these numbers from config
--define(N, 3).
--define(W, 3).
--define(R, 3).
-% timeout per state 5 seconds
--define(TIMEOUT, 5000).
+-define(N, rclref_config:n_val()).
+-define(W, rclref_config:w_val()).
+-define(R, rclref_config:r_val()).
+-define(TIMEOUT_GET, rclref_config:timeout_get()).
 
 -record(state,
         {req_id :: non_neg_integer(),
          from :: pid(),
          client :: node(),
          preflist :: [term()],
-         num_r = 0 :: non_neg_integer(),
-         num_w = 0 :: non_neg_integer(),
+         num_ok = 0 :: non_neg_integer(),
+         num_not_found = 0 :: non_neg_integer(),
+         num_vnode_error = 0 :: non_neg_integer(),
          riak_objects :: [rclref_object:riak_obejct()]}).
 
 % Call the supervisor to start the statem
@@ -44,18 +43,17 @@ stop(Pid, Reason) ->
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
--spec done_get(pid(), rclref_object:riak_object()) -> ok.
-done_get(Pid, RObj) ->
-    gen_statem:cast(Pid, {done_get, RObj}).
-
--spec failed_get(pid()) -> ok.
-failed_get(Pid) ->
-    gen_statem:cast(Pid, failed_get).
+-spec result_of_get(pid(),
+                    {ok, rclref_object:riak_object()} |
+                    {error, not_found} |
+                    {error, vnode_error}) -> ok.
+result_of_get(Pid, Result) ->
+    gen_statem:cast(Pid, Result).
 
 % Callbacks
 init([ReqId, From, Client, Key, Options]) ->
     logger:info("Initializing GetStatem, Pid:~p", [self()]),
-    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT),
+    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State = #state{req_id = ReqId,
@@ -83,31 +81,65 @@ terminate(Reason, _StateName, _State) ->
 
 % State function
 waiting(cast,
-        {done_get, RObj},
-        State = #state{from = From, req_id = ReqId, num_r = Num_r0, riak_objects = RObjs0}) ->
-    logger:debug("GetStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                 [cast, done_get, Num_r0]),
-    Num_r = Num_r0 + 1,
+        {ok, RObj},
+        State = #state{from = From, req_id = ReqId, num_ok = Num_ok0, riak_objects = RObjs0}) ->
+    Num_ok = Num_ok0 + 1,
     RObjs = RObjs0 ++ [RObj],
-    NewState = State#state{num_r = Num_r, riak_objects = RObjs},
-    case Num_r =:= ?R of
+    NewState = State#state{num_ok = Num_ok, riak_objects = RObjs},
+    case Num_ok >= ?R of
       true ->
           %TODO: Next state for read repair
-          From ! {ReqId, RObjs},
+          From ! {ReqId, {ok, RObjs}},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
     end;
-waiting(cast, failed_get, State = #state{num_r = Num_r0}) ->
-    logger:debug("GetStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                 [cast, failed_get, Num_r0]),
-    {keep_state, State};
+waiting(cast,
+        {error, not_found},
+        State = #state{from = From,
+                       req_id = ReqId,
+                       num_not_found = Num_not_found0,
+                       num_vnode_error = Num_vnode_error0}) ->
+    Num_not_found = Num_not_found0 + 1,
+    NewState = State#state{num_not_found = Num_not_found},
+    Reason = case Num_not_found >= Num_vnode_error0 of
+               true ->
+                   not_found;
+               false ->
+                   vnode_error
+             end,
+    case Num_not_found + Num_vnode_error0 > ?N - ?R of
+      true ->
+          From ! {ReqId, {error, Reason}},
+          {stop, normal, NewState};
+      false ->
+          {keep_state, NewState}
+    end;
+waiting(cast,
+        {error, vnode_error},
+        State = #state{from = From,
+                       req_id = ReqId,
+                       num_not_found = Num_not_found0,
+                       num_vnode_error = Num_vnode_error0}) ->
+    Num_vnode_error = Num_vnode_error0 + 1,
+    NewState = State#state{num_vnode_error = Num_vnode_error},
+    Reason = case Num_not_found0 >= Num_vnode_error of
+               true ->
+                   not_found;
+               false ->
+                   vnode_error
+             end,
+    case Num_not_found0 + Num_vnode_error > ?N - ?R of
+      true ->
+          From ! {ReqId, {error, Reason}},
+          {stop, normal, NewState};
+      false ->
+          {keep_state, NewState}
+    end;
 waiting(state_timeout, hard_stop, State = #state{req_id = ReqId, from = From}) ->
-    logger:debug("GetStatem at WAITING state with event ~p:~p", [state_timeout, hard_stop]),
     From ! {ReqId, {error, timeout}},
     {stop, waiting_timed_out, State};
-waiting(EventType, EventContent, State = #state{}) ->
-    logger:debug("GetStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
+waiting(_EventType, _EventContent, State = #state{}) ->
     {keep_state, State}.
 
 % Internal Functions

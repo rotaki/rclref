@@ -4,24 +4,23 @@
 
 -export([put/3]).
 -export([start_link/1, stop/2]).
--export([done_put/1, failed_put/1]).
+-export([result_of_put/2]).
 -export([init/1, callback_mode/0, terminate/3, code_change/4]).
 -export([waiting/3]).
 -export([reqid/0]).
 
--define(N, 3).
--define(W, 3).
--define(R, 3).
-% timeout per state 5 seconds
--define(TIMEOUT, 5000).
+-define(N, rclref_config:n_val()).
+-define(W, rclref_config:w_val()).
+-define(R, rclref_config:r_val()).
+-define(TIMEOUT_PUT, rclref_config:timeout_put()).
 
 -record(state,
         {req_id :: non_neg_integer(),
          from :: pid(),
          client :: node(),
          preflist :: [term()],
-         num_r = 0 :: non_neg_integer(),
-         num_w = 0 :: non_neg_integer(),
+         num_ok = 0 :: non_neg_integer(),
+         num_vnode_error = 0 :: non_neg_integer(),
          riak_objects = [] :: [rclref_object:riak_object()]}).
 
 %% Call the supervisor to start the statem
@@ -43,20 +42,16 @@ stop(Pid, Reason) ->
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
--spec done_put(pid()) -> ok.
-done_put(Pid) ->
-    gen_statem:cast(Pid, done_put).
-
--spec failed_put(pid()) -> ok.
-failed_put(Pid) ->
-    gen_statem:cast(Pid, fail_put).
+-spec result_of_put(pid(), {ok, ok} | {error, vnode_error}) -> ok.
+result_of_put(Pid, Result) ->
+    gen_statem:cast(Pid, Result).
 
 % Callbacks
 init([ReqId, From, Client, RObj, Options]) ->
     logger:info("Initializing PutStatem, Pid:~p", [self()]),
     Key = rclref_object:key(RObj),
     Value = rclref_object:value(RObj),
-    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT),
+    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State = #state{req_id = ReqId, from = From, client = Client, preflist = PrefList},
@@ -79,29 +74,32 @@ terminate(Reason, _StateName, _State) ->
     ok.
 
 % State function
-waiting(cast, done_put, State = #state{req_id = ReqId, from = From, num_w = Num_w0}) ->
-    logger:debug("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                 [cast, done_put, Num_w0]),
-    Num_w = Num_w0 + 1,
-    NewState = State#state{num_w = Num_w},
-    case Num_w =:= ?W of
+waiting(cast, {ok, ok}, State = #state{req_id = ReqId, from = From, num_ok = Num_ok0}) ->
+    Num_ok = Num_ok0 + 1,
+    NewState = State#state{num_ok = Num_ok},
+    case Num_ok >= ?W of
       true ->
           From ! {ReqId, ok},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
     end;
-waiting(cast, failed_put, State = #state{num_w = Num_w0}) ->
-    %TODO: count number of failures
-    logger:debug("PutStatem at WAITING state with event ~p:~p, at num_w: ~p",
-                 [cast, failed_put, Num_w0]),
-    {keep_state, State};
+waiting(cast,
+        {error, vnode_error},
+        State = #state{req_id = ReqId, from = From, num_vnode_error = Num_vnode_error0}) ->
+    Num_vnode_error = Num_vnode_error0 + 1,
+    NewState = State#state{num_vnode_error = Num_vnode_error},
+    case Num_vnode_error > ?N - ?W of
+      true ->
+          From ! {ReqId, {error, vnode_error}},
+          {stop, normal, NewState};
+      false ->
+          {keep_state, NewState}
+    end;
 waiting(state_timeout, hard_stop, State = #state{req_id = ReqId, from = From}) ->
-    logger:debug("PutStatem at WAITING state with event ~p:~p", [state_timeout, hard_stop]),
     From ! {ReqId, {error, timeout}},
     {stop, waiting_timed_out, State};
-waiting(EventType, EventContent, State = #state{}) ->
-    logger:debug("PutStatem at WAITING state with event ~p:~p", [EventType, EventContent]),
+waiting(_EventType, _EventContent, State = #state{}) ->
     {keep_state, State}.
 
 % Internal Functions

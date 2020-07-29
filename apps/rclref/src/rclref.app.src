@@ -12,5 +12,12 @@
                   riak_core_lite_util
                  ]},
   {mod, { rclref_app, []}},
-  {env, []}
+  {env, [{storage_backend, ets},
+         {merge_strategy, none},
+         {n_val, 3},
+         {r_val, 1}, % n_val >= r_val
+         {w_val, 1}, % n_val >= r_val
+         {timeout_put, 20000},
+         {timeout_get, 20000}
+        ]}
  ]}.
