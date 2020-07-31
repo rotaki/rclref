@@ -1,12 +1,19 @@
 -module(rclref_cluster_manager).
 
--export([leave_cluster/0, add_nodes_to_cluster/1]).
+-export([leave_cluster/0, leave_cluster/1, add_nodes_to_cluster/1, add_nodes_to_cluster/2, ring_members/1]).
 -export([join_new_nodes/1, plan_and_commit/1, wait_until_ring_no_pending_changes/0,
          wait_until_ring_ready/1]).
 
 -spec leave_cluster() -> ok | {error, term()}.
 leave_cluster() ->
-    riak_core:leave().
+    ok = riak_core:leave(),
+    ok = wait_until_ring_ready(node()),
+    ok = wait_until_ring_no_pending_changes(),
+    ok.
+
+-spec leave_cluster(node())  -> ok | {error, term()}.
+leave_cluster(Node) ->
+    rpc:call(Node, rclref_cluster_manager, leave_cluster, []).
 
 -spec add_nodes_to_cluster([node()]) -> ok | {error, ring_not_ready}.
 add_nodes_to_cluster(Nodes) ->
@@ -16,6 +23,17 @@ add_nodes_to_cluster(Nodes) ->
       _ ->
           {error, ring_not_ready}
     end.
+
+-spec add_nodes_to_cluster(node(), [node()]) -> ok | {error, ring_not_ready}.
+add_nodes_to_cluster(Node, Nodes) ->
+    rpc:call(Node, rclref_cluster_manager, add_nodes_to_cluster, [Nodes]).
+
+-spec ring_members(node()) -> [node()].
+ring_members(Node) ->
+    {ok, CurrentRing} = rpc:call(Node, riak_core_ring_manager, get_my_ring, []),
+    CurrentRingMembers = rpc:call(Node, riak_core_ring, all_members, [CurrentRing]),
+    CurrentRingMembers.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                                                 %      Internal Functions     %

@@ -34,7 +34,7 @@ compile:
 clean:
 	$(REBAR) clean
 
-ct: format dialyzer
+ct: dialyzer
 	$(REBAR) ct --name test@127.0.0.1
 
 

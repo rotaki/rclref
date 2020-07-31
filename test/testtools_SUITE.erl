@@ -1,4 +1,4 @@
--module(test_SUITE).
+-module(testtools_SUITE).
 
 -include_lib("common_test/include/ct.hrl").
 
@@ -26,7 +26,7 @@ end_per_testcase(_, Config) ->
 kill_nodes(Config) ->
     Nodes = ?config(nodes, Config),
     % kill nodes
-    KilledNodes = node_utils:brutal_kill_nodes(Nodes),
+    KilledNodes = node_utils:kill_nodes(Nodes),
     % check dead
     [pang = net_adm:ping(Node) || Node <- KilledNodes],
     ok.
@@ -41,8 +41,11 @@ brutal_kill_nodes(Config) ->
 
 kill_and_restart_nodes(Config) ->
     Nodes = ?config(nodes, Config),
-    % kill and restart ndoes
+    % kill and restart node
     NewNodes = node_utils:kill_and_restart_nodes(Nodes, []),
     % check alive
     [pong = net_adm:ping(Node) || Node <- NewNodes],
+    % kill nodes again
+    KilledNodes = node_utils:kill_nodes(Nodes),
+    [pang = net_adm:ping(Node) || Node <- KilledNodes],
     ok.

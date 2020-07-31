@@ -6,8 +6,7 @@
 -export([put_get_delete/1]).
 
 all() ->
-    % [put_get_delete]
-    [].
+    [put_get_delete].
     
 
 init_per_suite(Config) ->

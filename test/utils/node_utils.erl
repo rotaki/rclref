@@ -64,7 +64,7 @@ start_node(Name, Config) ->
                        [rclref_redirect_ct, ct_redirect_handler, ConfLog]),
 
           % Configuration
-          ok = rpc:call(Node, application, set_env, [riak_core, ring_creation_size, 64]),
+          ok = rpc:call(Node, application, set_env, [riak_core, ring_creation_size, 8]),
           {ok, _} = rpc:call(Node, application, ensure_all_started, [riak_core]),
           {ok, _} = rpc:call(Node, application, ensure_all_started, [rclref]),
 
@@ -88,8 +88,10 @@ kill_and_restart_nodes(NodeList, Config) ->
 -spec kill_nodes([node()]) -> [node()].
 kill_nodes(NodeList) ->
     lists:map(fun (Node) ->
-                      {ok, Name} = ct_slave:stop(get_node_name(Node)),
-                      Name
+                      case ct_slave:stop(get_node_name(Node)) of
+                          {ok, Name} -> Name;
+                          {error, not_started, Name} -> Name
+                      end
               end,
               NodeList).
 

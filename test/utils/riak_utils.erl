@@ -66,8 +66,8 @@ wait_until_no_pending_changes(Nodes) ->
                               Changes)
         end,
     ?assertEqual(ok, time_utils:wait_until(F)),
-    ok.
-
+    ok.                
+    
 %% @doc TODO
 -spec maybe_wait_for_changes(node()) -> ok | fail.
 maybe_wait_for_changes(Node) ->
