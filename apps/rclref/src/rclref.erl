@@ -3,13 +3,14 @@
 -compile({no_auto_import, [{put, 2}]}).
 
 -export([ping/0, put/1, put/2, get/1, get/2, delete/1]).
+-export([list_keys/0, list_keys/1, list_all/0, list_all/1]).
+
 
 -ignore_xref([{ping, 0}]).
 
-%TODO: Get these numbers from config
-%TODO: Make state timeout compatible with the base timeout
 -define(TIMEOUT_PUT, rclref_config:timeout_put()).
 -define(TIMEOUT_GET, rclref_config:timeout_get()).
+-define(TIMEOUT_COVERAGE, rclref_config:timeout_coverage()).
 
 %% Public API
 
@@ -30,26 +31,26 @@ ping() ->
 put(RObj) ->
     put(RObj, []).
 
--spec put(rclref_object:riak_object(), Options :: [term()]) -> ok |
-                                                               {error, timeout} |
-                                                               {error, term()}.
+-spec put(rclref_object:riak_object(), Options :: [term()]) ->
+             ok | {error, timeout} | {error, term()}.
 put(RObj, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_put_statem:put(node(), RObj, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
     wait_for_reqid(ReqId, Timeout).
 
--spec get(rclref_object:key()) -> {ok, rclref_object:riak_object()} |
-                                  {error, not_found} |
-                                  {error, timeout} |
-                                  {error, term()}.
+-spec get(rclref_object:key()) ->
+             {ok, rclref_object:riak_object()} |
+             {error, not_found} |
+             {error, timeout} |
+             {error, term()}.
 get(Key) ->
     get(Key, []).
 
--spec get(rclref_object:key(), Options :: [term()]) -> {ok,
-                                                        [rclref_object:riak_object()]} |
-                                                       {error, not_found} |
-                                                       {error, timeout} |
-                                                       {error, term()}.
+-spec get(rclref_object:key(), Options :: [term()]) ->
+             {ok, [rclref_object:riak_object()]} |
+             {error, not_found} |
+             {error, timeout} |
+             {error, term()}.
 get(Key, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_get_statem:get(node(), Key, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
@@ -60,12 +61,29 @@ delete(Key) ->
     % keep it as a tombstone
     delete(Key, []).
 
--spec delete(riak_obejct:key(), Options :: [term()]) -> ok |
-                                                        {error, timeout} |
-                                                        {error, term()}.
+-spec delete(riak_obejct:key(), Options :: [term()]) ->
+                ok | {error, timeout} | {error, term()}.
 delete(Key, Options) ->
     RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
+
+list_keys() ->
+    list_keys([]).
+
+list_keys(Options) ->
+    coverage_command(keys, Options).
+
+list_all() ->
+    list_all([]).
+
+list_all(Options) ->
+    coverage_command(keyvalues, Options).
+
+% private
+coverage_command(Command, Options) ->
+    {ok, ReqId} = rclref_coverage_statem:coverage(node(), Command, Options),
+    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
+    wait_for_reqid(ReqId, Timeout).
 
 % private
 -spec wait_for_reqid(non_neg_integer(), timeout()) -> {error, timeout} | any().

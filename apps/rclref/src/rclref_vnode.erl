@@ -143,8 +143,16 @@ delete(State0 = #state{index = Index, mod = Mod, modstate = ModState0 }) ->
     State1 = State0#state{modstate = ModState1},
     {ok, State1}.
 
-handle_coverage(_Req, _KeySpaces, _Sender, State) ->
-    {stop, not_implemented, State}.
+handle_coverage(keys, _KeySpaces, {_, ReqId, _}, State0 = #state{index = _Index, mod = Mod, modstate = ModState0}) ->
+    Acc0 = [],
+    Fun = fun(K, A) -> A ++ [K] end,
+    Acc1 = Mod:fold_keys(Fun, Acc0, ModState0),
+    {reply, {ReqId, Acc1}, State0};
+handle_coverage(keyvalues, _KeySpaces, {_, ReqId, _}, State0 = #state{index = _Index, mod = Mod, modstate = ModState0}) ->
+    Acc0 = [],
+    Fun = fun(K, V, A) -> A ++ [{K, V}] end,
+    Acc1 = Mod:fold_objects(Fun, Acc0, ModState0),
+    {reply, {ReqId, Acc1}, State0}.
 
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.

@@ -18,6 +18,7 @@
          {r_val, 3}, % n_val >= r_val
          {w_val, 3}, % n_val >= r_val
          {timeout_put, 20000},
-         {timeout_get, 20000}
+         {timeout_get, 20000},
+         {timeout_coverage, infinity}
         ]}
  ]}.

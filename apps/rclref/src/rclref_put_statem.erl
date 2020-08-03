@@ -24,9 +24,8 @@
          riak_objects = [] :: [rclref_object:riak_object()]}).
 
 %% Call the supervisor to start the statem
--spec put(Client :: node(),
-          RObj :: rclref_object:riak_object(),
-          Options :: [term()]) -> {ok, ReqId :: non_neg_integer()}.
+-spec put(Client :: node(), RObj :: rclref_object:riak_object(), Options :: [term()]) ->
+             {ok, ReqId :: non_neg_integer()}.
 put(Client, RObj, Options) ->
     ReqId = reqid(),
     {ok, _} = rclref_put_statem_sup:start_put_statem([ReqId, self(), Client, RObj, Options]),
@@ -55,11 +54,12 @@ init([ReqId, From, Client, RObj, Options]) ->
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State = #state{req_id = ReqId, from = From, client = Client, preflist = PrefList},
-    Fn = fun (IndexNode) ->
-                 riak_core_vnode_master:command(IndexNode,
-                                                {kv_put_request, Key, Value, self()},
-                                                rclref_vnode_master)
-         end,
+    Fn =
+        fun (IndexNode) ->
+                riak_core_vnode_master:command(IndexNode,
+                                               {kv_put_request, Key, Value, self()},
+                                               rclref_vnode_master)
+        end,
     [Fn(IndexNode) || {IndexNode, _Type} <- PrefList],
     {ok, waiting, State, [{state_timeout, Timeout, hard_stop}]}.
 

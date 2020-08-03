@@ -3,7 +3,7 @@
 -include_lib("stdlib/include/assert.hrl").
 
 -export([storage_backend/0, merge_strategy/0, n_val/0, r_val/0, w_val/0, timeout_put/0,
-         timeout_get/0]).
+         timeout_get/0, timeout_coverage/0]).
 
 -spec storage_backend() -> ets | other.
 storage_backend() ->
@@ -77,4 +77,14 @@ timeout_get() ->
           TimeoutGet;
       _ ->
           ?assert(false)
+    end.
+
+-spec timeout_coverage() -> non_neg_integer() | infinity.
+timeout_coverage() ->
+    {ok, TimeoutCoverage} = application:get_env(rclref, timeout_coverage),
+    case is_integer(TimeoutCoverage) andalso TimeoutCoverage > 0 orelse TimeoutCoverage =:= infinity of
+        true ->
+            TimeoutCoverage;
+        _ ->
+            ?assert(false)
     end.

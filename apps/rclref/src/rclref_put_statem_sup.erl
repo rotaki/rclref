@@ -17,11 +17,12 @@ start_link() ->
 
 % Callbacks
 init([]) ->
-    PutStatem = {undefined,
-                 {rclref_put_statem, start_link, []},
-                 temporary,
-                 5000,
-                 worker,
-                 [rclref_put_statem]},
+    PutStatem =
+        {undefined,
+         {rclref_put_statem, start_link, []},
+         temporary,
+         5000,
+         worker,
+         [rclref_put_statem]},
 
     {ok, {{simple_one_for_one, 10, 10}, [PutStatem]}}.

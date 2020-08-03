@@ -1,6 +1,7 @@
 -module(rclref_cluster_manager).
 
--export([leave_cluster/0, leave_cluster/1, add_nodes_to_cluster/1, add_nodes_to_cluster/2, ring_members/1]).
+-export([leave_cluster/0, leave_cluster/1, add_nodes_to_cluster/1, add_nodes_to_cluster/2,
+         ring_members/1]).
 -export([join_new_nodes/1, plan_and_commit/1, wait_until_ring_no_pending_changes/0,
          wait_until_ring_ready/1]).
 
@@ -11,7 +12,7 @@ leave_cluster() ->
     ok = wait_until_ring_no_pending_changes(),
     ok.
 
--spec leave_cluster(node())  -> ok | {error, term()}.
+-spec leave_cluster(node()) -> ok | {error, term()}.
 leave_cluster(Node) ->
     rpc:call(Node, rclref_cluster_manager, leave_cluster, []).
 
@@ -34,7 +35,6 @@ ring_members(Node) ->
     CurrentRingMembers = rpc:call(Node, riak_core_ring, all_members, [CurrentRing]),
     CurrentRingMembers.
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                                                 %      Internal Functions     %
 
@@ -44,8 +44,8 @@ ring_members(Node) ->
 join_new_nodes(Nodes) ->
     {ok, CurrentRing} = riak_core_ring_manager:get_my_ring(),
     CurrentNodeMembers = riak_core_ring:all_members(CurrentRing),
-    NewNodeMembers = [NewNode
-                      || NewNode <- Nodes, not lists:member(NewNode, CurrentNodeMembers)],
+    NewNodeMembers =
+        [NewNode || NewNode <- Nodes, not lists:member(NewNode, CurrentNodeMembers)],
     plan_and_commit(NewNodeMembers).
 
 -spec plan_and_commit([node()]) -> ok.
@@ -75,7 +75,8 @@ plan_and_commit(NewNodeMembers) ->
 wait_until_ring_no_pending_changes() ->
     {ok, CurrentRing} = riak_core_ring_manager:get_my_ring(),
     Nodes = riak_core_ring:all_members(CurrentRing),
-    F = fun () ->
+    F =
+        fun () ->
                 _ = rpc:multicall(Nodes, riak_core_vnode_manager, force_handoffs, []),
                 {Rings, BadNodes} = rpc:multicall(Nodes, riak_core_ring_manager, get_raw_ring, []),
                 Changes = [[] =:= riak_core_ring:pending_changes(Ring) || {ok, Ring} <- Rings],

@@ -25,9 +25,8 @@
          riak_objects :: [rclref_object:riak_obejct()]}).
 
 % Call the supervisor to start the statem
--spec get(Client :: node(), Key :: rclref_object:key(), Options :: [term()]) -> {ok,
-                                                                                 ReqId ::
-                                                                                     non_neg_integer()}.
+-spec get(Client :: node(), Key :: rclref_object:key(), Options :: [term()]) ->
+             {ok, ReqId :: non_neg_integer()}.
 get(Client, Key, Options) ->
     ReqId = reqid(),
     {ok, _} = rclref_get_statem_sup:start_get_statem([ReqId, self(), Client, Key, Options]),
@@ -46,7 +45,8 @@ stop(Pid, Reason) ->
 -spec result_of_get(pid(),
                     {ok, rclref_object:riak_object()} |
                     {error, not_found} |
-                    {error, vnode_error}) -> ok.
+                    {error, vnode_error}) ->
+                       ok.
 result_of_get(Pid, Result) ->
     gen_statem:cast(Pid, Result).
 
@@ -56,16 +56,18 @@ init([ReqId, From, Client, Key, Options]) ->
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
-    State = #state{req_id = ReqId,
-                   from = From,
-                   client = Client,
-                   preflist = PrefList,
-                   riak_objects = []},
-    Fn = fun (IndexNode) ->
-                 riak_core_vnode_master:command(IndexNode,
-                                                {kv_get_request, Key, self()},
-                                                rclref_vnode_master)
-         end,
+    State =
+        #state{req_id = ReqId,
+               from = From,
+               client = Client,
+               preflist = PrefList,
+               riak_objects = []},
+    Fn =
+        fun (IndexNode) ->
+                riak_core_vnode_master:command(IndexNode,
+                                               {kv_get_request, Key, self()},
+                                               rclref_vnode_master)
+        end,
     [Fn(IndexNode) || {IndexNode, _Type} <- PrefList],
     {ok, waiting, State, [{state_timeout, Timeout, hard_stop}]}.
 
@@ -96,18 +98,20 @@ waiting(cast,
     end;
 waiting(cast,
         {error, not_found},
-        State = #state{from = From,
-                       req_id = ReqId,
-                       num_not_found = Num_not_found0,
-                       num_vnode_error = Num_vnode_error0}) ->
+        State =
+            #state{from = From,
+                   req_id = ReqId,
+                   num_not_found = Num_not_found0,
+                   num_vnode_error = Num_vnode_error0}) ->
     Num_not_found = Num_not_found0 + 1,
     NewState = State#state{num_not_found = Num_not_found},
-    Reason = case Num_not_found >= Num_vnode_error0 of
-               true ->
-                   not_found;
-               false ->
-                   vnode_error
-             end,
+    Reason =
+        case Num_not_found >= Num_vnode_error0 of
+          true ->
+              not_found;
+          false ->
+              vnode_error
+        end,
     case Num_not_found + Num_vnode_error0 > ?N - ?R of
       true ->
           From ! {ReqId, {error, Reason}},
@@ -117,18 +121,20 @@ waiting(cast,
     end;
 waiting(cast,
         {error, vnode_error},
-        State = #state{from = From,
-                       req_id = ReqId,
-                       num_not_found = Num_not_found0,
-                       num_vnode_error = Num_vnode_error0}) ->
+        State =
+            #state{from = From,
+                   req_id = ReqId,
+                   num_not_found = Num_not_found0,
+                   num_vnode_error = Num_vnode_error0}) ->
     Num_vnode_error = Num_vnode_error0 + 1,
     NewState = State#state{num_vnode_error = Num_vnode_error},
-    Reason = case Num_not_found0 >= Num_vnode_error of
-               true ->
-                   not_found;
-               false ->
-                   vnode_error
-             end,
+    Reason =
+        case Num_not_found0 >= Num_vnode_error of
+          true ->
+              not_found;
+          false ->
+              vnode_error
+        end,
     case Num_not_found0 + Num_vnode_error > ?N - ?R of
       true ->
           From ! {ReqId, {error, Reason}},

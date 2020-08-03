@@ -4,7 +4,7 @@
 
 -record(state, {table_id}).
 
--export([start/2, stop/1, get/2, put/3, delete/2, drop/1, fold_keys/4, fold_objects/4,
+-export([start/2, stop/1, get/2, put/3, delete/2, drop/1, fold_keys/3, fold_keys/4, fold_objects/3, fold_objects/4,
          is_empty/1, status/1]).
 
 start(_PartitionIndex, _Config) ->
@@ -41,13 +41,22 @@ drop(State = #state{table_id = TableId}) ->
 is_empty(_State = #state{table_id = TableId}) ->
     ets:first(TableId) =:= '$end_of_table'.
 
+fold_keys(Fun, Acc, State) ->
+    fold_keys(Fun, Acc, [], State).
 fold_keys(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
-    ets:foldl(Fun, Acc0, TableId).
+    FoldKeysFun =
+        fun({K, _}, A) ->
+                Fun(K, A)
+        end,
+    ets:foldl(FoldKeysFun, Acc0, TableId).
 
+fold_objects(Fun, Acc, State) ->
+    fold_objects(Fun, Acc, [], State).
 fold_objects(Fun, Acc0, _Options, _State = #state{table_id = TableId}) ->
-    FoldObjectsFun = fun ({K, V}, A) ->
-                             Fun(K, V, A)
-                     end,
+    FoldObjectsFun =
+        fun ({K, V}, A) ->
+                Fun(K, V, A)
+        end,
     ets:foldl(FoldObjectsFun, Acc0, TableId).
 
 status(_State = #state{table_id = TableId}) ->
