@@ -1,5 +1,9 @@
 {"1.2.0",
 [{<<"poolboy">>,{pkg,<<"poolboy">>,<<"1.5.2">>},1},
+ {<<"riak_core">>,
+  {git,"git@github.com:wattlebirdaz/riak_core_lite.git",
+       {ref,"0399aa43a05284d48e9bc6d7cd19a9d6247dc41f"}},
+  0},
  {<<"riak_core_lite_util">>,{pkg,<<"riak_core_lite_util">>,<<"0.1.0">>},0}]}.
 [
 {pkg_hash,[
