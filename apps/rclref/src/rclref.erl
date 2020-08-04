@@ -81,7 +81,7 @@ list_all(Options) ->
 
 % private
 coverage_command(Command, Options) ->
-    {ok, ReqId} = rclref_coverage_statem:coverage(node(), Command, Options),
+    {ok, ReqId} = rclref_coverage_fsm:coverage(node(), Command, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
     wait_for_reqid(ReqId, Timeout).
 

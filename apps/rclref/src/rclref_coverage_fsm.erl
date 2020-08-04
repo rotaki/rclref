@@ -1,6 +1,6 @@
--module(rclref_coverage_statem).
+-module(rclref_coverage_fsm).
 
--behaviour(riak_core_coverage_statem).
+-behaviour(riak_core_coverage_fsm).
 
 -export([coverage/3]).
 -export([start_link/1, stop/2]).
@@ -13,12 +13,12 @@
 
 coverage(Client, Command, Options) ->
     ReqId = reqid(),
-    {ok, _} = rclref_coverage_statem_sup:start_coverage_statem([ReqId, self(), Client, Command, Options]),
+    {ok, _} = rclref_coverage_fsm_sup:start_coverage_statem([ReqId, self(), Client, Command, Options]),
     {ok, ReqId}.
 
 start_link([ReqId, From, _Client, Command, Options]) ->
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
-    riak_core_coverage_statem:start_link(?MODULE, {pid, ReqId, From}, [Command, Timeout]).
+    riak_core_coverage_fsm:start_link(?MODULE, {pid, ReqId, From}, [Command, Timeout]).
 
 stop(Pid, Reason) ->
     gen_statem:cast(Pid, Reason, infinity).

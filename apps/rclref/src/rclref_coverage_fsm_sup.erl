@@ -1,4 +1,4 @@
--module(rclref_coverage_statem_sup).
+-module(rclref_coverage_fsm_sup).
 
 -behaviour(supervisor).
 
@@ -17,15 +17,10 @@ start_link() ->
 
 
 init([]) ->
-    CoverageStatem = {undefined,
-                      {rclref_coverage_statem, start_link, []},
+    CoverageFsm = {undefined,
+                      {rclref_coverage_fsm, start_link, []},
                       temporary, 
                       5000, 
                       worker, 
-                      [rclref_coverage_statem]},
-    {ok, {{simple_one_for_one, 10, 10}, [CoverageStatem]}}.
-
-
-
-
-
+                      [rclref_coverage_fsm]},
+    {ok, {{simple_one_for_one, 10, 10}, [CoverageFsm]}}.
