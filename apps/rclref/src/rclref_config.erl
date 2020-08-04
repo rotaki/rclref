@@ -82,9 +82,11 @@ timeout_get() ->
 -spec timeout_coverage() -> non_neg_integer() | infinity.
 timeout_coverage() ->
     {ok, TimeoutCoverage} = application:get_env(rclref, timeout_coverage),
-    case is_integer(TimeoutCoverage) andalso TimeoutCoverage > 0 orelse TimeoutCoverage =:= infinity of
-        true ->
-            TimeoutCoverage;
-        _ ->
-            ?assert(false)
+    case is_integer(TimeoutCoverage) andalso TimeoutCoverage > 0 orelse
+           TimeoutCoverage =:= infinity
+        of
+      true ->
+          TimeoutCoverage;
+      _ ->
+          ?assert(false)
     end.

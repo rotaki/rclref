@@ -32,10 +32,10 @@ init(_Args) ->
          infinity,
          supervisor,
          [rclref_get_statem_sup]},
-    CoverageFsm = 
+    CoverageFsm =
         {rclref_coverage_fsm_sup,
          {rclref_coverage_fsm_sup, start_link, []},
-         permanent, 
+         permanent,
          infinity,
          supervisor,
          [rclref_coverage_fsm_sup]},
