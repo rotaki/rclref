@@ -11,10 +11,11 @@ all() ->
 init_per_testcase(_, Config) ->
     Names = [node1, node2, node3, node4],
     % start Nodes
-    NodesWithStatus = node_utils:pmap(fun (Name) ->
-                                              node_utils:start_node(Name, [])
-                                      end,
-                                      Names),
+    NodesWithStatus =
+        node_utils:pmap(fun (Name) ->
+                                node_utils:start_node(Name, [])
+                        end,
+                        Names),
     Nodes = [Node || {connect, Node} <- NodesWithStatus],
     % check alive
     [pong = net_adm:ping(Node) || Node <- Nodes],

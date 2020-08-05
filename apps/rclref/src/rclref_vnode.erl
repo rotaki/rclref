@@ -12,14 +12,8 @@
 -ignore_xref([{start_vnode, 1}]).
 
 -record(state, {partition, mod, modstate}).
-
--record(riak_core_fold_req_v2, {
-          foldfun :: fun(),
-          acc0 :: term(),
-          forwardable :: boolean(),
-          opts = [] :: list()}).
-
--define(FOLD_REQ, #riak_core_fold_req_v2).
+-record(riak_core_fold_req_v2,
+        {foldfun :: fun(), acc0 :: term(), forwardable :: boolean(), opts = [] :: list()}).
 
 %% API
 start_vnode(I) ->
@@ -27,12 +21,13 @@ start_vnode(I) ->
 
 init([Partition]) ->
     %TODO: Get model from config
-    Mod = case rclref_config:storage_backend() of
-            ets ->
-                rclref_ets_backend;
-            _ ->
-                ?assert(false)
-          end,
+    Mod =
+        case rclref_config:storage_backend() of
+          ets ->
+              rclref_ets_backend;
+          _ ->
+              ?assert(false)
+        end,
 
     {ok, ModState} = Mod:start(Partition, undefined),
     logger:debug("Successfully started ~p backend for partition ~p", [Mod, Partition]),
@@ -51,7 +46,8 @@ handle_command({kv_put_request, Key, Value, Pid},
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {error, Reason, ModState1} ->
-          logger:error("Failed to put kv with key: ~p, value: ~p for partition: ~p, error: ~p",
+          logger:error("Failed to put kv with key: ~p, value: ~p for partition: ~p, "
+                       "error: ~p",
                        [Key, Value, Partition, Reason]),
           rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
           State1 = State0#state{modstate = ModState1},
@@ -86,8 +82,10 @@ handle_command(Message, _Sender, State) ->
     logger:warning("unhandled_command ~p", [Message]),
     {noreply, State}.
 
-handle_handoff_command(?FOLD_REQ{foldfun=FoldFun, acc0=Acc0}, _Sender, State = #state{mod = Mod, modstate = ModState}) ->
-    % FoldFun 
+handle_handoff_command(#riak_core_fold_req_v2{foldfun = FoldFun, acc0 = Acc0},
+                       _Sender,
+                       State = #state{mod = Mod, modstate = ModState}) ->
+    % FoldFun
     % -type fold_objects_fun() :: fun((term(), term(), any()) -> any() | no_return()).
     Acc = Mod:fold_objects(FoldFun, Acc0, [], ModState),
     {reply, Acc, State};
@@ -107,7 +105,8 @@ handoff_finished(TargetNode, State = #state{partition = Partition}) ->
     logger:info("handoff finished ~p: ~p", [Partition, TargetNode]),
     {ok, State}.
 
-handle_handoff_data(BinData, State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
+handle_handoff_data(BinData,
+                    State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     {Key, Value} = binary_to_term(BinData),
     logger:info("handoff data received ~p: ~p", [Partition, Key]),
     {ok, ModState1} = Mod:put(Key, Value, ModState0),
@@ -125,32 +124,44 @@ handle_overload_info(_, _Idx) ->
 
 is_empty(State = #state{mod = Mod, modstate = ModState}) ->
     case Mod:is_empty(ModState) of
-        true ->
-            logger:info("is_empty: ~p", [true]),
-            {true, State};
-        false ->
-            logger:info("is_empty: ~p", [false]),
-            {false, State};
-        Other ->
-            logger:error("is_empty error reason :~p", [Other]),
-            {false, State}
+      true ->
+          logger:info("is_empty: ~p", [true]),
+          {true, State};
+      false ->
+          logger:info("is_empty: ~p", [false]),
+          {false, State};
+      Other ->
+          logger:error("is_empty error reason :~p", [Other]),
+          {false, State}
     end.
-                
-delete(State0 = #state{partition = Partition, mod = Mod, modstate = ModState0 }) ->
+
+delete(State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     logger:info("delete partition: ~p", [Partition]),
     {ok, ModState1} = Mod:drop(ModState0),
     ok = Mod:stop(ModState1),
     State1 = State0#state{modstate = ModState1},
     {ok, State1}.
 
-handle_coverage({_, keys},  _KeySpaces, {_, ReqId, _}, State0 = #state{partition = _Partition, mod = Mod, modstate = ModState0}) ->
+handle_coverage({_, keys},
+                _KeySpaces,
+                {_, ReqId, _},
+                State0 = #state{partition = _Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
-    Fun = fun(K, A) -> A ++ [K] end,
+    Fun =
+        fun (K, A) ->
+                A ++ [K]
+        end,
     Acc1 = Mod:fold_keys(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0};
-handle_coverage({_, objects},  _KeySpaces, {_, ReqId, _}, State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
+handle_coverage({_, objects},
+                _KeySpaces,
+                {_, ReqId, _},
+                State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
-    Fun = fun(K, V, A) -> A ++ [rclref_object:new(K, V, Partition, node())] end,
+    Fun =
+        fun (K, V, A) ->
+                A ++ [rclref_object:new(K, V, Partition, node())]
+        end,
     Acc1 = Mod:fold_objects(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0}.
 

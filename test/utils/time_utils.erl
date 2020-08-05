@@ -107,10 +107,11 @@ wait_until_connected(Node1, Node2) ->
 %% @doc Waits until a certain registered name pops up on the remote node.
 -spec wait_until_registered(node(), any()) -> any().
 wait_until_registered(Node, Name) ->
-    IsNameRegisteredMember = fun () ->
-                                     Registered = rpc:call(Node, erlang, registered, []),
-                                     lists:member(Name, Registered)
-                             end,
+    IsNameRegisteredMember =
+        fun () ->
+                Registered = rpc:call(Node, erlang, registered, []),
+                lists:member(Name, Registered)
+        end,
     Delay = rt_retry_delay(),
     Retry = 360000 div Delay,
     wait_until(IsNameRegisteredMember, Retry, Delay).
@@ -128,9 +129,10 @@ wait_until_nodes_agree_about_ownership(Nodes) ->
 -spec wait_until_owners_according_to(node(), [node()]) -> ok.
 wait_until_owners_according_to(Node, NodeRingOwners) ->
     ExpectedOwners = lists:usort(NodeRingOwners),
-    AreNodesOwners = fun (N) ->
-                             riak_utils:owners_according_to(N) =:= ExpectedOwners
-                     end,
+    AreNodesOwners =
+        fun (N) ->
+                riak_utils:owners_according_to(N) =:= ExpectedOwners
+        end,
     ?assertEqual(ok, wait_until(Node, AreNodesOwners)),
     ok.
 

@@ -11,10 +11,11 @@ start_node(Name, Config) ->
     {ok, Cwd} = file:get_cwd(),
     % RclrefFolder is .../rclref/_build/test
     RclrefFolder = filename:dirname(filename:dirname(Cwd)),
-    NodeConfig = [{init_timeout, 3000},
-                  {startup_timeout, 3000},
-                  {monitor_master, true},
-                  {startup_functions, [{code, set_path, [CodePath]}]}],
+    NodeConfig =
+        [{init_timeout, 3000},
+         {startup_timeout, 3000},
+         {monitor_master, true},
+         {startup_functions, [{code, set_path, [CodePath]}]}],
 
     case ct_slave:start(Name, NodeConfig) of
       {ok, Node} ->
@@ -25,24 +26,27 @@ start_node(Name, Config) ->
           {ok, NodeWorkingDir} = rpc:call(Node, file, get_cwd, []),
 
           % Data Dirs
-          ok = rpc:call(Node,
-                        application,
-                        set_env,
-                        [riak_core,
-                         ring_state_dir,
-                         filename:join([NodeWorkingDir, Node, "data/ring"])]),
-          ok = rpc:call(Node,
-                        application,
-                        set_env,
-                        [riak_core,
-                         platform_data_dir,
-                         filename:join([NodeWorkingDir, Node, "data"])]),
-          ok = rpc:call(Node,
-                        application,
-                        set_env,
-                        [riak_core,
-                         schema_dirs,
-                         filename:join([RclrefFolder ++ "/lib/rclref/priv"])]),
+          ok =
+              rpc:call(Node,
+                       application,
+                       set_env,
+                       [riak_core,
+                        ring_state_dir,
+                        filename:join([NodeWorkingDir, Node, "data/ring"])]),
+          ok =
+              rpc:call(Node,
+                       application,
+                       set_env,
+                       [riak_core,
+                        platform_data_dir,
+                        filename:join([NodeWorkingDir, Node, "data"])]),
+          ok =
+              rpc:call(Node,
+                       application,
+                       set_env,
+                       [riak_core,
+                        schema_dirs,
+                        filename:join([RclrefFolder ++ "/lib/rclref/priv"])]),
 
           % Set ports
           Port = web_ports(Name),
@@ -55,10 +59,12 @@ start_node(Name, Config) ->
           rpc:call(Node, logger, add_handlers, [rclref]),
           % redirect slave logs to ct_master logs
           ok = rpc:call(Node, application, set_env, [rclref, ct_master, node()]),
-          ConfLog = #{level => debug,
-                      formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                      config => #{type => standard_io}},
-          _ = rpc:call(Node,
+          ConfLog =
+              #{level => debug,
+                formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+                config => #{type => standard_io}},
+          _ =
+              rpc:call(Node,
                        logger,
                        add_handler,
                        [rclref_redirect_ct, ct_redirect_handler, ConfLog]),
@@ -89,8 +95,10 @@ kill_and_restart_nodes(NodeList, Config) ->
 kill_nodes(NodeList) ->
     lists:map(fun (Node) ->
                       case ct_slave:stop(get_node_name(Node)) of
-                          {ok, Name} -> Name;
-                          {error, not_started, Name} -> Name
+                        {ok, Name} ->
+                            Name;
+                        {error, not_started, Name} ->
+                            Name
                       end
               end,
               NodeList).
@@ -138,34 +146,40 @@ pmap(F, L) ->
                 end,
                 0,
                 L),
-    L2 = [receive
-            {pmap, N, R} ->
-                {N, R}
-          end
-          || _ <- L],
+    L2 =
+        [receive
+           {pmap, N, R} ->
+               {N, R}
+         end
+         || _ <- L],
     {_, L3} = lists:unzip(lists:keysort(1, L2)),
     L3.
 
 log_config(LogDir) ->
-    DebugConfig = #{level => debug,
-                    formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                    config => #{type => {file, filename:join(LogDir, "debug.log")}}},
+    DebugConfig =
+        #{level => debug,
+          formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+          config => #{type => {file, filename:join(LogDir, "debug.log")}}},
 
-    InfoConfig = #{level => info,
-                   formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                   config => #{type => {file, filename:join(LogDir, "info.log")}}},
+    InfoConfig =
+        #{level => info,
+          formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+          config => #{type => {file, filename:join(LogDir, "info.log")}}},
 
-    NoticeConfig = #{level => notice,
-                     formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                     config => #{type => {file, filename:join(LogDir, "notice.log")}}},
+    NoticeConfig =
+        #{level => notice,
+          formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+          config => #{type => {file, filename:join(LogDir, "notice.log")}}},
 
-    WarningConfig = #{level => warning,
-                      formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                      config => #{type => {file, filename:join(LogDir, "warning.log")}}},
+    WarningConfig =
+        #{level => warning,
+          formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+          config => #{type => {file, filename:join(LogDir, "warning.log")}}},
 
-    ErrorConfig = #{level => error,
-                    formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
-                    config => #{type => {file, filename:join(LogDir, "error.log")}}},
+    ErrorConfig =
+        #{level => error,
+          formatter => {logger_formatter, #{single_line => true, max_size => 2048}},
+          config => #{type => {file, filename:join(LogDir, "error.log")}}},
 
     [{handler, debug_rclref, logger_std_h, DebugConfig},
      {handler, info_rclref, logger_std_h, InfoConfig},

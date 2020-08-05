@@ -63,7 +63,7 @@ delete(Key) ->
 
 -spec delete(riak_obejct:key(), Options :: [term()]) ->
                 ok | {error, timeout} | {error, term()}.
-delete(Key, Options) when is_list(Options)->
+delete(Key, Options) when is_list(Options) ->
     RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
 
@@ -80,7 +80,7 @@ list_all_keys() ->
     list_all_keys([]).
 
 -spec list_all_keys(Options :: [term()]) -> {ok, [rclref_object:key()]}.
-list_all_keys(Options) when is_list(Options)->
+list_all_keys(Options) when is_list(Options) ->
     coverage_command({all, keys}, Options).
 
 -spec list_all_objects() -> {ok, [rclref_object:object()]}.
@@ -88,7 +88,7 @@ list_all_objects() ->
     list_all_objects([]).
 
 -spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
-list_all_objects(Options) when is_list(Options)->
+list_all_objects(Options) when is_list(Options) ->
     coverage_command({all, objects}, Options).
 
 % private
@@ -96,7 +96,7 @@ list_all_objects(Options) when is_list(Options)->
                           {error, timeout} |
                           {ok, [rclref_object:key()]} |
                           {ok, [rclref_object:object()]}.
-coverage_command(Command, Options)->
+coverage_command(Command, Options) ->
     {ok, ReqId} = rclref_coverage_fsm:coverage(node(), Command, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
     wait_for_reqid(ReqId, Timeout).

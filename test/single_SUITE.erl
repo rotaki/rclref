@@ -10,7 +10,6 @@
 
 all() ->
     [put_get_delete_test, coverage_call_test].
-    
 
 init_per_suite(Config) ->
     application:ensure_all_started(rclref),
@@ -37,10 +36,11 @@ put_get_delete_test(_Config) ->
     % confirm 20 key values
     lists:foreach(fun ({RObj, Key}) ->
                           {ok, GotRObjs} = rclref:get(Key),
-                          true = lists:all(fun (GotRObj) ->
-                                                   has_same_keyvalue(RObj, GotRObj)
-                                           end,
-                                           GotRObjs)
+                          true =
+                              lists:all(fun (GotRObj) ->
+                                                has_same_keyvalue(RObj, GotRObj)
+                                        end,
+                                        GotRObjs)
                   end,
                   lists:zip(RObjs, Keys)),
     % delete 20 key values
@@ -69,28 +69,31 @@ coverage_call_test(_Config) ->
 
     % check listing of all keys
     {ok, GotKeys} = rclref:list_all_keys(),
-    lists:foreach(fun(Key) ->
-			?N =:= count_keys(Key, GotKeys)
-		end,
-		Keys),
+    lists:foreach(fun (Key) ->
+                          ?N =:= count_keys(Key, GotKeys)
+                  end,
+                  Keys),
 
     % check listing of all RObjs
     {ok, GotRObjs} = rclref:list_all_objects(),
-    lists:foreach(fun(RObj) ->
-			?N =:= count_objects(RObj, GotRObjs)
-		end,
-		RObjs),
+    lists:foreach(fun (RObj) ->
+                          ?N =:= count_objects(RObj, GotRObjs)
+                  end,
+                  RObjs),
     ok.
 
 % count number of occurrences of key X in list Y
 % private
 count_keys(X, Y) ->
-	length([E || E <- Y, E =:= X]).
+    length([E || E <- Y, E =:= X]).
 
-% count number of occurrences of object (key, value) X in list Y   
+% count number of occurrences of object (key, value) X in list Y
 % private
 count_objects(X, Y) ->
-    length([E || E <- Y, rclref_object:key(E) =:= rclref_object:key(X), rclref_object:value(E) =:= rclref_object:value(X)]).
+    length([E
+            || E <- Y,
+               rclref_object:key(E) =:= rclref_object:key(X),
+               rclref_object:value(E) =:= rclref_object:value(X)]).
 
 % private
 has_same_keyvalue(RObj1, RObj2) ->

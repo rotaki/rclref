@@ -5,7 +5,11 @@
 -type key() :: term().
 -type value() :: term().
 
--record(r_object, {key :: key(), value :: value(), partition :: non_neg_integer() | undefined, node :: node() | undefined}).
+-record(r_object,
+        {key :: key(),
+         value :: value(),
+         partition :: non_neg_integer() | undefined,
+         node :: node() | undefined}).
 
 -opaque riak_object() :: #r_object{}.
 
