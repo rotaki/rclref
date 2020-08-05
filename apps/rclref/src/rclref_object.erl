@@ -13,7 +13,7 @@
 
 -opaque riak_object() :: #r_object{}.
 
--export([key/1, value/1, new/2, new/4]).
+-export([key/1, value/1, partition/1, node/1, new/2, new/4]).
 
 -spec key(riak_object()) -> key().
 key(#r_object{key = Key}) ->
@@ -22,6 +22,14 @@ key(#r_object{key = Key}) ->
 -spec value(riak_object()) -> value().
 value(#r_object{value = Value}) ->
     Value.
+
+-spec partition(riak_object()) -> non_neg_integer().
+partition(#r_object{partition = Partition}) ->
+    Partition.
+
+-spec node(riak_object()) -> node().
+node(#r_object{node = Node}) ->
+    Node.
 
 -spec new(key(), value()) -> riak_object().
 new(Key, Value) ->
