@@ -3,8 +3,7 @@
 -compile({no_auto_import, [{put, 2}]}).
 
 -export([ping/0, put/1, put/2, get/1, get/2, delete/1]).
--export([list_unique_keys/0, list_unique_keys/1, list_unique_objects/0,
-         list_unique_objects/1]).
+-export([list_unique_keys/0, list_unique_keys/1]).
 -export([list_all_keys/0, list_all_keys/1, list_all_objects/0, list_all_objects/1]).
 
 -ignore_xref([{ping, 0}]).
@@ -64,7 +63,7 @@ delete(Key) ->
 
 -spec delete(riak_obejct:key(), Options :: [term()]) ->
                 ok | {error, timeout} | {error, term()}.
-delete(Key, Options) ->
+delete(Key, Options) when is_list(Options)->
     RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
 
@@ -73,7 +72,7 @@ list_unique_keys() ->
     list_unique_keys([]).
 
 -spec list_unique_keys(Options :: [term()]) -> {ok, [rclref_object:key()]}.
-list_unique_keys(Options) ->
+list_unique_keys(Options) when is_list(Options) ->
     coverage_command({unique, keys}, Options).
 
 -spec list_all_keys() -> {ok, [rclref_object:key()]}.
@@ -81,31 +80,23 @@ list_all_keys() ->
     list_all_keys([]).
 
 -spec list_all_keys(Options :: [term()]) -> {ok, [rclref_object:key()]}.
-list_all_keys(Options) ->
+list_all_keys(Options) when is_list(Options)->
     coverage_command({all, keys}, Options).
-
--spec list_unique_objects() -> {ok, [rclref_object:object()]}.
-list_unique_objects() ->
-    list_unique_objects([]).
-
--spec list_unique_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
-list_unique_objects(Options) ->
-    coverage_command({unique, keyvalues}, Options).
 
 -spec list_all_objects() -> {ok, [rclref_object:object()]}.
 list_all_objects() ->
     list_all_objects([]).
 
 -spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
-list_all_objects(Options) ->
-    coverage_command({all, keyvalues}, Options).
+list_all_objects(Options) when is_list(Options)->
+    coverage_command({all, objects}, Options).
 
 % private
 -spec coverage_command(term(), [term()]) ->
                           {error, timeout} |
                           {ok, [rclref_object:key()]} |
                           {ok, [rclref_object:object()]}.
-coverage_command(Command, Options) ->
+coverage_command(Command, Options)->
     {ok, ReqId} = rclref_coverage_fsm:coverage(node(), Command, Options),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
     wait_for_reqid(ReqId, Timeout).

@@ -11,7 +11,7 @@
 
 -ignore_xref([{start_vnode, 1}]).
 
--record(state, {index, mod, modstate}).
+-record(state, {partition, mod, modstate}).
 
 -record(riak_core_fold_req_v2, {
           foldfun :: fun(),
@@ -25,7 +25,7 @@
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-init([Index]) ->
+init([Partition]) ->
     %TODO: Get model from config
     Mod = case rclref_config:storage_backend() of
             ets ->
@@ -34,32 +34,32 @@ init([Index]) ->
                 ?assert(false)
           end,
 
-    {ok, ModState} = Mod:start(Index, undefined),
-    logger:debug("Successfully started ~p backend for index ~p", [Mod, Index]),
-    State = #state{index = Index, mod = Mod, modstate = ModState},
+    {ok, ModState} = Mod:start(Partition, undefined),
+    logger:debug("Successfully started ~p backend for partition ~p", [Mod, Partition]),
+    State = #state{partition = Partition, mod = Mod, modstate = ModState},
     {ok, State}.
 
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
-    {reply, {pong, node(), State#state.index}, State};
+    {reply, {pong, node(), State#state.partition}, State};
 handle_command({kv_put_request, Key, Value, Pid},
                _Sender,
-               State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
+               State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     case Mod:put(Key, Value, ModState0) of
       {ok, ModState1} ->
           rclref_put_statem:result_of_put(Pid, {ok, ok}),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {error, Reason, ModState1} ->
-          logger:error("Failed to put kv with key: ~p, value: ~p for index: ~p, error: ~p",
-                       [Key, Value, Index, Reason]),
+          logger:error("Failed to put kv with key: ~p, value: ~p for partition: ~p, error: ~p",
+                       [Key, Value, Partition, Reason]),
           rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1}
     end;
 handle_command({kv_get_request, Key, Pid},
                _Sender,
-               State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
+               State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     case Mod:get(Key, ModState0) of
       {ok, not_found, ModState1} ->
           ok = rclref_get_statem:result_of_get(Pid, {error, not_found}),
@@ -70,14 +70,14 @@ handle_command({kv_get_request, Key, Pid},
             undefined ->
                 ok = rclref_get_statem:result_of_get(Pid, {error, not_found});
             _ ->
-                RObj = rclref_object:new(Key, Value),
+                RObj = rclref_object:new(Key, Value, Partition, node()),
                 ok = rclref_get_statem:result_of_get(Pid, {ok, RObj})
           end,
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {error, Reason, ModState1} ->
-          logger:error("Failed to get kv with key: ~p for index: ~p, error: ~p",
-                       [Key, Index, Reason]),
+          logger:error("Failed to get kv with key: ~p for partition: ~p, error: ~p",
+                       [Key, Partition, Reason]),
           rclref_get_statem:result_of_get(Pid, {error, vnode_error}),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1}
@@ -95,21 +95,21 @@ handle_handoff_command(Message, _Sender, State) ->
     logger:warning("handoff command ~p, ignoring", [Message]),
     {noreply, State}.
 
-handoff_starting(TargetNode, State = #state{index = Index}) ->
-    logger:info("handoff starting ~p: ~p", [Index, TargetNode]),
+handoff_starting(TargetNode, State = #state{partition = Partition}) ->
+    logger:info("handoff starting ~p: ~p", [Partition, TargetNode]),
     {true, State}.
 
-handoff_cancelled(State = #state{index = Index}) ->
-    logger:info("handoff cancelled ~p", [Index]),
+handoff_cancelled(State = #state{partition = Partition}) ->
+    logger:info("handoff cancelled ~p", [Partition]),
     {ok, State}.
 
-handoff_finished(TargetNode, State = #state{index = Index}) ->
-    logger:info("handoff finished ~p: ~p", [Index, TargetNode]),
+handoff_finished(TargetNode, State = #state{partition = Partition}) ->
+    logger:info("handoff finished ~p: ~p", [Partition, TargetNode]),
     {ok, State}.
 
-handle_handoff_data(BinData, State0 = #state{index = Index, mod = Mod, modstate = ModState0}) ->
+handle_handoff_data(BinData, State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     {Key, Value} = binary_to_term(BinData),
-    logger:info("handoff data received ~p: ~p", [Index, Key]),
+    logger:info("handoff data received ~p: ~p", [Partition, Key]),
     {ok, ModState1} = Mod:put(Key, Value, ModState0),
     State1 = State0#state{modstate = ModState1},
     {reply, ok, State1}.
@@ -136,21 +136,21 @@ is_empty(State = #state{mod = Mod, modstate = ModState}) ->
             {false, State}
     end.
                 
-delete(State0 = #state{index = Index, mod = Mod, modstate = ModState0 }) ->
-    logger:info("delete index: ~p", [Index]),
+delete(State0 = #state{partition = Partition, mod = Mod, modstate = ModState0 }) ->
+    logger:info("delete partition: ~p", [Partition]),
     {ok, ModState1} = Mod:drop(ModState0),
     ok = Mod:stop(ModState1),
     State1 = State0#state{modstate = ModState1},
     {ok, State1}.
 
-handle_coverage({_, keys},  _KeySpaces, {_, ReqId, _}, State0 = #state{index = _Index, mod = Mod, modstate = ModState0}) ->
+handle_coverage({_, keys},  _KeySpaces, {_, ReqId, _}, State0 = #state{partition = _Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
     Fun = fun(K, A) -> A ++ [K] end,
     Acc1 = Mod:fold_keys(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0};
-handle_coverage({_, keyvalues},  _KeySpaces, {_, ReqId, _}, State0 = #state{index = _Index, mod = Mod, modstate = ModState0}) ->
+handle_coverage({_, objects},  _KeySpaces, {_, ReqId, _}, State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
-    Fun = fun(K, V, A) -> A ++ [{K, V}] end,
+    Fun = fun(K, V, A) -> A ++ [rclref_object:new(K, V, Partition, node())] end,
     Acc1 = Mod:fold_objects(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0}.
 

@@ -115,7 +115,7 @@ handoff_test(Config) ->
     lists:foreach(fun({RObj, Key}) ->
                           {ok, GotRObjs} = rpc:call(Node2, rclref, get, [Key]),
                           true = lists:all(fun (GotRObj) ->
-                                                   RObj =:= GotRObj
+                                                   has_same_keyvalue(RObj, GotRObj)
                                            end,
                                           GotRObjs)
                   end,
@@ -136,11 +136,16 @@ handoff_test(Config) ->
     lists:foreach(fun({RObj, Key}) ->
                           {ok, GotRObjs} = rpc:call(Node2, rclref, get, [Key]),
                           true = lists:all(fun (GotRObj) ->
-                                                   RObj =:= GotRObj
+                                                   has_same_keyvalue(RObj, GotRObj)
                                            end,
                                           GotRObjs)
                   end,
                   lists:zip(RObjs, Keys)),
 
     ok.
-    
+
+% private
+has_same_keyvalue(RObj1, RObj2) ->
+    ?assertEqual(rclref_object:key(RObj1), rclref_object:key(RObj2)),
+    ?assertEqual(rclref_object:value(RObj1), rclref_object:value(RObj2)),
+    true.

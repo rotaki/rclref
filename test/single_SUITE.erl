@@ -1,6 +1,7 @@
 -module(single_SUITE).
 
 -include_lib("common_test/include/ct.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export([all/0, init_per_suite/1, end_per_suite/1]).
 -export([put_get_delete_test/1, coverage_call_test/1]).
@@ -37,7 +38,7 @@ put_get_delete_test(_Config) ->
     lists:foreach(fun ({RObj, Key}) ->
                           {ok, GotRObjs} = rclref:get(Key),
                           true = lists:all(fun (GotRObj) ->
-                                                   RObj =:= GotRObj
+                                                   has_same_keyvalue(RObj, GotRObj)
                                            end,
                                            GotRObjs)
                   end,
@@ -64,26 +65,35 @@ coverage_call_test(_Config) ->
                   end,
                   RObjs),
     % check listing of unique keys
-    {ok, lists:usort(Keys)} =:=  rclref:list_unique_keys(),
-
-    % check listing of unique RObjs
-    {ok, lists:usort(RObjs)} =:= rclref:list_unique_objects(),
+    ?assertEqual({ok, lists:usort(Keys)}, rclref:list_unique_keys()),
 
     % check listing of all keys
     {ok, GotKeys} = rclref:list_all_keys(),
     lists:foreach(fun(Key) ->
-			?N =:= count(Key, GotKeys)
+			?N =:= count_keys(Key, GotKeys)
 		end,
 		Keys),
+
     % check listing of all RObjs
     {ok, GotRObjs} = rclref:list_all_objects(),
     lists:foreach(fun(RObj) ->
-			?N =:= count(RObj, GotRObjs)
+			?N =:= count_objects(RObj, GotRObjs)
 		end,
 		RObjs),
     ok.
 
-% count number of occurrences of X in Y
-count(X, Y) ->
+% count number of occurrences of key X in list Y
+% private
+count_keys(X, Y) ->
 	length([E || E <- Y, E =:= X]).
-	
+
+% count number of occurrences of object (key, value) X in list Y   
+% private
+count_objects(X, Y) ->
+    length([E || E <- Y, rclref_object:key(E) =:= rclref_object:key(X), rclref_object:value(E) =:= rclref_object:value(X)]).
+
+% private
+has_same_keyvalue(RObj1, RObj2) ->
+    ?assertEqual(rclref_object:key(RObj1), rclref_object:key(RObj2)),
+    ?assertEqual(rclref_object:value(RObj1), rclref_object:value(RObj2)),
+    true.
