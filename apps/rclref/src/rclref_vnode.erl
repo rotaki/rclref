@@ -148,8 +148,8 @@ handle_coverage({_, keys},
                 State0 = #state{partition = _Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
     Fun =
-        fun (K, A) ->
-                A ++ [K]
+        fun (Key, Accum) ->
+                [Key] ++ Accum
         end,
     Acc1 = Mod:fold_keys(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0};
@@ -159,8 +159,8 @@ handle_coverage({_, objects},
                 State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
     Fun =
-        fun (K, V, A) ->
-                A ++ [rclref_object:new(K, V, Partition, node())]
+        fun (Key, Value, Accum) ->
+                [rclref_object:new(Key, Value, Partition, node())] ++ Accum
         end,
     Acc1 = Mod:fold_objects(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0}.
