@@ -5,9 +5,11 @@
 -export([start_get_statem/1, stop_get_statem/1, start_link/0]).
 -export([init/1]).
 
--spec start_get_statem([term()]) -> {ok, undefined} | {ok, pid()}.
+-spec start_get_statem([term()]) -> {ok, undefined} | {ok, non_neg_integer()}.
 start_get_statem(Args) ->
-    {ok, _} = supervisor:start_child(?MODULE, [Args]).
+    ReqId = reqid(),
+    {ok, _} = supervisor:start_child(?MODULE, [[ReqId] ++ Args]),
+    {ok, ReqId}.
 
 -spec stop_get_statem(pid()) -> ok.
 stop_get_statem(Pid) ->
@@ -28,3 +30,8 @@ init([]) ->
          worker,
          [rclref_put_statem]},
     {ok, {{simple_one_for_one, 10, 10}, [GetStatem]}}.
+
+% Internal Functions
+-spec reqid() -> non_neg_integer().
+reqid() ->
+    erlang:phash2(erlang:monotonic_time()).

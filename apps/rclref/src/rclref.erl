@@ -52,7 +52,7 @@ get(Key) ->
              {error, timeout} |
              {error, term()}.
 get(Key, Options) when is_list(Options) ->
-    {ok, ReqId} = rclref_get_statem:get(node(), Key, Options),
+    {ok, ReqId} = rclref_get_statem_sup:start_get_statem([self(), node(), Key, Options]),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
     wait_for_reqid(ReqId, Timeout).
 
