@@ -73,7 +73,7 @@ list_unique_keys() ->
 
 -spec list_unique_keys(Options :: [term()]) -> {ok, [rclref_object:key()]}.
 list_unique_keys(Options) when is_list(Options) ->
-    coverage_command({unique, keys}, Options).
+    coverage_request({unique, keys}, Options).
 
 -spec list_all_keys() -> {ok, [rclref_object:key()]}.
 list_all_keys() ->
@@ -81,7 +81,7 @@ list_all_keys() ->
 
 -spec list_all_keys(Options :: [term()]) -> {ok, [rclref_object:key()]}.
 list_all_keys(Options) when is_list(Options) ->
-    coverage_command({all, keys}, Options).
+    coverage_request({all, keys}, Options).
 
 -spec list_all_objects() -> {ok, [rclref_object:object()]}.
 list_all_objects() ->
@@ -89,15 +89,16 @@ list_all_objects() ->
 
 -spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
 list_all_objects(Options) when is_list(Options) ->
-    coverage_command({all, objects}, Options).
+    coverage_request({all, objects}, Options).
 
 % private
--spec coverage_command(term(), [term()]) ->
+-spec coverage_request(term(), [term()]) ->
                           {error, timeout} |
                           {ok, [rclref_object:key()]} |
                           {ok, [rclref_object:object()]}.
-coverage_command(Command, Options) ->
-    {ok, ReqId} = rclref_coverage_fsm:coverage(node(), Command, Options),
+coverage_request(Request, Options) ->
+    {ok, ReqId} =
+        rclref_coverage_fsm_sup:start_coverage_fsm([self(), node(), Request, Options]),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_COVERAGE),
     wait_for_reqid(ReqId, Timeout).
 

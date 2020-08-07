@@ -6,7 +6,9 @@
 -export([init/1]).
 
 start_coverage_fsm(Args) ->
-    {ok, _} = supervisor:start_child(?MODULE, [Args]).
+    ReqId = reqid(),
+    {ok, _} = supervisor:start_child(?MODULE, [[ReqId] ++ Args]),
+    {ok, ReqId}.
 
 stop_coverage_fsm(Pid) ->
     ok = supervisor:terminate_child(?MODULE, Pid),
@@ -24,3 +26,8 @@ init([]) ->
          worker,
          [rclref_coverage_fsm]},
     {ok, {{simple_one_for_one, 10, 10}, [CoverageFsm]}}.
+
+% Internal Functions
+-spec reqid() -> non_neg_integer().
+reqid() ->
+    erlang:phash2(erlang:monotonic_time()).
