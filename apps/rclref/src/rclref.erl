@@ -34,7 +34,7 @@ put(RObj) ->
 -spec put(rclref_object:riak_object(), Options :: [term()]) ->
              ok | {error, timeout} | {error, term()}.
 put(RObj, Options) when is_list(Options) ->
-    {ok, ReqId} = rclref_put_statem:put(node(), RObj, Options),
+    {ok, ReqId} = rclref_put_statem_sup:start_put_statem([self(), node(), RObj, Options]),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
     wait_for_reqid(ReqId, Timeout).
 
