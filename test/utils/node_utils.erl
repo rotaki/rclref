@@ -1,16 +1,26 @@
 -module(node_utils).
 
--export([start_node/2, kill_and_restart_nodes/2, kill_nodes/1, brutal_kill_nodes/1,
-         restart_nodes/2]).
--export([get_node_name/1, pmap/2, log_config/1, web_ports/1]).
+-export([set_up_nodes/3, start_node/2, kill_and_restart_nodes/2, kill_nodes/1,
+         brutal_kill_nodes/1, restart_nodes/2]).
+-export([get_node_name/1, pmap/2, log_config/1]).
+
+-spec set_up_nodes(atom(), [atom()], [non_neg_integer()]) -> [node()].
+set_up_nodes(Module, Names, Ports) ->
+    NodesWithStatus =
+        node_utils:pmap(fun ({Name, Port}) ->
+                                node_utils:start_node(Name, [{port, Port}, {module, Module}])
+                        end,
+                        lists:zip(Names, Ports)),
+    Nodes = [Node || {connect, Node} <- NodesWithStatus],
+    Nodes.
 
 -spec start_node(atom(), [tuple()]) -> {connect, node()} | {ready, node()}.
 start_node(Name, Config) ->
-    CodePath = lists:filter(fun filelib:is_dir/1, code:get_path()),
     ct:log("Starting node ~p", [Name]),
+    CodePath = lists:filter(fun filelib:is_dir/1, code:get_path()),
     {ok, Cwd} = file:get_cwd(),
     % RclrefFolder is .../rclref/_build/test
-    RclrefFolder = filename:dirname(filename:dirname(Cwd)),
+    _RclrefFolder = filename:dirname(filename:dirname(Cwd)),
     NodeConfig =
         [{init_timeout, 3000},
          {startup_timeout, 3000},
@@ -21,10 +31,11 @@ start_node(Name, Config) ->
       {ok, Node} ->
           % Load application to allow configuring the environment before starting
           ok = rpc:call(Node, application, load, [riak_core]),
+          ok = rpc:call(Node, application, load, [rclref]),
           % Get remote working dir of node
           % NodeWorkingDir is .../rclref/_build/test/logs/ct_run.test@127.0.0.1.2020-00-00_00.00.00
           {ok, NodeWorkingDir} = rpc:call(Node, file, get_cwd, []),
-
+          SuiteName = proplists:get_value(module, Config, ''),
           % Data Dirs
           ok =
               rpc:call(Node,
@@ -32,28 +43,29 @@ start_node(Name, Config) ->
                        set_env,
                        [riak_core,
                         ring_state_dir,
-                        filename:join([NodeWorkingDir, Node, "data/ring"])]),
+                        filename:join([NodeWorkingDir, "suites", SuiteName, Node, "data/ring"])]),
           ok =
               rpc:call(Node,
                        application,
                        set_env,
                        [riak_core,
                         platform_data_dir,
-                        filename:join([NodeWorkingDir, Node, "data"])]),
+                        filename:join([NodeWorkingDir, "suites", SuiteName, Node, "data"])]),
           ok =
               rpc:call(Node,
                        application,
                        set_env,
                        [riak_core,
                         schema_dirs,
-                        filename:join([RclrefFolder ++ "/lib/rclref/priv"])]),
+                        filename:join([NodeWorkingDir, "suites", SuiteName, Node, "data"])]),
 
           % Set ports
-          Port = web_ports(Name),
+          Port = proplists:get_value(port, Config),
           ok = rpc:call(Node, application, set_env, [riak_core, handoff_port, Port]),
+          ok = rpc:call(Node, application, set_env, [rclref, http_port, Port + 1]),
 
           % Logging Configuration
-          LogRoot = filename:join([NodeWorkingDir, Node, "logs"]),
+          LogRoot = filename:join([NodeWorkingDir, "suites", SuiteName, Node, "logs"]),
           ok = rpc:call(Node, application, set_env, [rclref, logger, log_config(LogRoot)]),
           rpc:call(Node, logger, set_primary_config, [level, all]),
           rpc:call(Node, logger, add_handlers, [rclref]),
@@ -186,15 +198,3 @@ log_config(LogDir) ->
      {handler, notice_rclref, logger_std_h, NoticeConfig},
      {handler, warning_rclref, logger_std_h, WarningConfig},
      {handler, error_rclref, logger_std_h, ErrorConfig}].
-
-web_ports(Name) ->
-    case Name of
-      node1 ->
-          10015;
-      node2 ->
-          10025;
-      node3 ->
-          10035;
-      node4 ->
-          10045
-    end.

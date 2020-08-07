@@ -39,7 +39,7 @@ put(RObj, Options) when is_list(Options) ->
     wait_for_reqid(ReqId, Timeout).
 
 -spec get(rclref_object:key()) ->
-             {ok, rclref_object:riak_object()} |
+             {ok, [rclref_object:riak_object()]} |
              {error, not_found} |
              {error, timeout} |
              {error, term()}.
