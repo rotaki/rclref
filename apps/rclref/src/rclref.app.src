@@ -11,7 +11,8 @@
                   riak_core,
                   riak_core_lite_util,
                   cowboy,
-                  jsx
+                  jsx,
+                  hackney
                  ]},
   {mod, { rclref_app, []}},
   {env, [{storage_backend, ets},
