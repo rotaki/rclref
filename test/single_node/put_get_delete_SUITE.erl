@@ -15,8 +15,8 @@ init_per_suite(Config) ->
     application:ensure_all_started(rclref),
     Names = [node1],
     Ports = [30000],
-    Nodes = node_utils:set_up_nodes(?MODULE, Names, Ports),
-    [{module, ?MODULE}, {names, Names}, {nodes, Nodes} | Config].
+    Nodes = node_utils:set_up_nodes(Names, Ports, [{module, ?MODULE}]),
+    [{module, ?MODULE}, {names, Names}, {nodes, Nodes}, {ports, Ports} | Config].
 
 end_per_suite(Config) ->
     Nodes = ?config(nodes, Config),

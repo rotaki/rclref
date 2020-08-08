@@ -1,21 +1,23 @@
 -module(node_utils).
 
--export([set_up_nodes/3, start_node/2, kill_and_restart_nodes/2, kill_nodes/1,
-         brutal_kill_nodes/1, restart_nodes/2]).
+-export([set_up_nodes/3, start_node/3, kill_and_restart_nodes/3, kill_nodes/1,
+         brutal_kill_nodes/1]).
 -export([get_node_name/1, pmap/2, log_config/1]).
 
--spec set_up_nodes(atom(), [atom()], [non_neg_integer()]) -> [node()].
-set_up_nodes(Module, Names, Ports) ->
+-spec set_up_nodes([atom()], [non_neg_integer()], [tuple()]) -> [node()].
+set_up_nodes(Names, Ports, Config) ->
     NodesWithStatus =
         node_utils:pmap(fun ({Name, Port}) ->
-                                node_utils:start_node(Name, [{port, Port}, {module, Module}])
+                                node_utils:start_node(Name, Port, Config)
                         end,
                         lists:zip(Names, Ports)),
     Nodes = [Node || {connect, Node} <- NodesWithStatus],
+    ok = riak_utils:wait_until_ring_converged(Nodes),
     Nodes.
 
--spec start_node(atom(), [tuple()]) -> {connect, node()} | {ready, node()}.
-start_node(Name, Config) ->
+-spec start_node(atom(), non_neg_integer(), [tuple()]) ->
+                    {connect, node()} | {ready, node()}.
+start_node(Name, Port, Config) ->
     ct:log("Starting node ~p", [Name]),
     CodePath = lists:filter(fun filelib:is_dir/1, code:get_path()),
     {ok, Cwd} = file:get_cwd(),
@@ -60,7 +62,6 @@ start_node(Name, Config) ->
                         filename:join([NodeWorkingDir, "suites", SuiteName, Node, "data"])]),
 
           % Set ports
-          Port = proplists:get_value(port, Config),
           ok = rpc:call(Node, application, set_env, [riak_core, handoff_port, Port]),
           ok = rpc:call(Node, application, set_env, [rclref, http_port, Port + 1]),
 
@@ -95,13 +96,14 @@ start_node(Name, Config) ->
           ct:pal("Error starting node ~p, reason ~p, will retry", [Node, Reason]),
           ct_slave:stop(Name),
           time_utils:wait_until_offline(Node),
-          start_node(Name, Config)
+          start_node(Name, Port, Config)
     end.
 
--spec kill_and_restart_nodes([node()], [tuple()]) -> [node()].
-kill_and_restart_nodes(NodeList, Config) ->
+-spec kill_and_restart_nodes([node()], [non_neg_integer()], [tuple()]) -> [node()].
+kill_and_restart_nodes(NodeList, Ports, Config) ->
     NewNodeList = brutal_kill_nodes(NodeList),
-    restart_nodes(NewNodeList, Config).
+    NewNames = [get_node_name(Node) || Node <- NewNodeList],
+    set_up_nodes(NewNames, Ports, Config).
 
 -spec kill_nodes([node()]) -> [node()].
 kill_nodes(NodeList) ->
@@ -125,20 +127,6 @@ brutal_kill_nodes(NodeList) ->
                       Node
               end,
               NodeList).
-
--spec restart_nodes([node()], [tuple()]) -> [node()].
-restart_nodes(NodeList, Config) ->
-    pmap(fun (Node) ->
-                 ct:pal("Restarting node ~p", [Node]),
-                 ct:log("Starting and waiting unitil vnodes are restarted at node ~p", [Node]),
-                 start_node(get_node_name(Node), Config),
-                 ct:log("Waiting until ring converged @ ~p", [Node]),
-                 riak_utils:wait_until_ring_converged([Node]),
-                 ct:log("Waiting unitl ready @ ~p", [Node]),
-                 % time_utils:wait_until(Node, fun wait_init:check_ready/1),
-                 Node
-         end,
-         NodeList).
 
 -spec get_node_name(node()) -> atom().
 get_node_name(NodeAtom) ->
