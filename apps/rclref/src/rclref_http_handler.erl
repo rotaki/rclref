@@ -71,6 +71,7 @@ robj_to_map(RObj) ->
     #{kind => rclref_object,
       key => rclref_object:key(RObj),
       value => rclref_object:value(RObj),
+      vector_clock => rclref_object:vclock(RObj),
       partition => integer_to_binary(rclref_object:partition(RObj)),
       node => rclref_object:node(RObj)}.
 

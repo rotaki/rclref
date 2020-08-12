@@ -12,12 +12,13 @@
                   riak_core_lite_util,
                   cowboy,
                   jsx,
-                  hackney
+                  hackney,
+                  vectorclock
                  ]},
   {mod, { rclref_app, []}},
   {env, [{storage_backend, ets},
          {merge_strategy, none},
-         {n_val, 3},
+         {n_val, 5},
          {r_val, 3}, % n_val >= r_val >= n_val/2
          {w_val, 3}, % n_val >= w_val >= n_val/2
          {timeout_put, 20000},

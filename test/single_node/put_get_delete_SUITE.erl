@@ -6,8 +6,6 @@
 -export([all/0, init_per_suite/1, end_per_suite/1]).
 -export([put_get_delete_test/1]).
 
--define(N, rclref_config:n_val()).
-
 all() ->
     [put_get_delete_test].
 
@@ -50,6 +48,11 @@ put_get_delete_test(Config) ->
     % delete 20 key values
     lists:foreach(fun (Key) ->
                           ok = rpc:call(Node, rclref, delete, [Key])
+                  end,
+                  Keys),
+    % reap tombs
+    lists:foreach(fun (Key) ->
+                          ok = rpc:call(Node, rclref, reap_tombs, [Key])
                   end,
                   Keys),
     % confirm deleted

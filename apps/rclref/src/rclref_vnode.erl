@@ -25,11 +25,12 @@ init([Partition]) ->
         case rclref_config:storage_backend() of
           ets ->
               rclref_ets_backend;
+          dets ->
+              rclref_dets_backend;
           _ ->
               ?assert(false)
         end,
-
-    {ok, ModState} = Mod:start(Partition, undefined),
+    {ok, ModState} = Mod:start(Partition, []),
     logger:debug("Successfully started ~p backend for partition ~p", [Mod, Partition]),
     State = #state{partition = Partition, mod = Mod, modstate = ModState},
     {ok, State}.
@@ -37,21 +38,66 @@ init([Partition]) ->
 %% Sample command: respond to a ping
 handle_command(ping, _Sender, State) ->
     {reply, {pong, node(), State#state.partition}, State};
-handle_command({kv_put_request, Key, Value, Pid},
+handle_command({kv_put_request, RObj, Pid, Node},
                _Sender,
                State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
-    case Mod:put(Key, Value, ModState0) of
-      {ok, ModState1} ->
-          rclref_put_statem:result_of_put(Pid, {ok, ok}),
-          State1 = State0#state{modstate = ModState1},
-          {noreply, State1};
+    Key = rclref_object:key(RObj),
+    Value = rclref_object:value(RObj),
+    case Mod:get(Key, ModState0) of
+      {ok, not_found, ModState1} ->
+          VClock = rclref_object:new_vclock(),
+          NewVClock = rclref_object:increment_vclock(Node, VClock),
+          NewContent = rclref_object:new_content(Value, NewVClock),
+          case Mod:put(Key, NewContent, ModState1) of
+            {ok, ModState2} ->
+                rclref_put_statem:result_of_put(Pid, {ok, ok}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1};
+            {error, Reason, ModState2} ->
+                logger:error("Failed to put kv with key: ~p, content: ~p for partition: ~p, "
+                             "error: ~p",
+                             [Key, NewContent, Partition, Reason]),
+                rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1}
+          end;
+      {ok, Content, ModState1} ->
+          VClock = rclref_object:vclock(Content),
+          NewVClock = rclref_object:increment_vclock(Node, VClock),
+          NewContent = rclref_object:new_content(Value, NewVClock),
+          case Mod:put(Key, NewContent, ModState1) of
+            {ok, ModState2} ->
+                rclref_put_statem:result_of_put(Pid, {ok, ok}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1};
+            {error, Reason, ModState2} ->
+                logger:error("Failed to put kv with key: ~p, content: ~p for partition: ~p, "
+                             "error: ~p",
+                             [Key, NewContent, Partition, Reason]),
+                rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1}
+          end;
       {error, Reason, ModState1} ->
-          logger:error("Failed to put kv with key: ~p, value: ~p for partition: ~p, "
+          logger:error("Failed to get kv (before put) with key: ~p for partition: ~p, "
                        "error: ~p",
-                       [Key, Value, Partition, Reason]),
-          rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
-          State1 = State0#state{modstate = ModState1},
-          {noreply, State1}
+                       [Key, Partition, Reason]),
+          VClock = rclref_object:new_vclock(),
+          NewVClock = rclref_object:increment_vclock(Node, VClock),
+          NewContent = rclref_object:new_content(Value, NewVClock),
+          case Mod:put(Key, NewContent, ModState1) of
+            {ok, ModState2} ->
+                rclref_put_statem:result_of_put(Pid, {ok, ok}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1};
+            {error, Reason, ModState2} ->
+                logger:error("Failed to put kv with key: ~p, content: ~p for partition: ~p, "
+                             "error: ~p",
+                             [Key, NewContent, Partition, Reason]),
+                rclref_put_statem:result_of_put(Pid, {error, vnode_error}),
+                State1 = State0#state{modstate = ModState2},
+                {noreply, State1}
+          end
     end;
 handle_command({kv_get_request, Key, Pid},
                _Sender,
@@ -61,20 +107,53 @@ handle_command({kv_get_request, Key, Pid},
           ok = rclref_get_statem:result_of_get(Pid, {error, not_found}),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
-      {ok, Value, ModState1} ->
-          case Value of
-            undefined ->
-                ok = rclref_get_statem:result_of_get(Pid, {error, not_found});
-            _ ->
-                RObj = rclref_object:new(Key, Value, Partition, node()),
-                ok = rclref_get_statem:result_of_get(Pid, {ok, RObj})
-          end,
+      {ok, Content, ModState1} ->
+          RObj = rclref_object:new(Key, Content, Partition, node()),
+          ok = rclref_get_statem:result_of_get(Pid, {ok, RObj}),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1};
       {error, Reason, ModState1} ->
           logger:error("Failed to get kv with key: ~p for partition: ~p, error: ~p",
                        [Key, Partition, Reason]),
           rclref_get_statem:result_of_get(Pid, {error, vnode_error}),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1}
+    end;
+handle_command({repair_request, RObj},
+               _Sender,
+               State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
+    Key = rclref_object:key(RObj),
+    Content = rclref_object:content(RObj),
+    case Mod:put(Key, Content, ModState0) of
+      {ok, ModState1} ->
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1};
+      {error, Reason, ModState1} ->
+          logger:error("Failed to put kv with key: ~p, content: ~p for partition: ~p, "
+                       "error: ~p",
+                       [Key, Content, Partition, Reason]),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1}
+    end;
+handle_command({reap_tombs_request, Key},
+               _Sender,
+               State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
+    case Mod:get(Key, ModState0) of
+      {ok, not_found, ModState1} ->
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1};
+      {ok, Content, ModState1} ->
+          case rclref_object:value(Content) of
+            undefined ->
+                {ok, ModState2} = Mod:delete(Key, ModState1);
+            _ ->
+                ModState2 = ModState1
+          end,
+          State1 = State0#state{modstate = ModState2},
+          {noreply, State1};
+      {error, Reason, ModState1} ->
+          logger:error("Failed to get kv with key: ~p for partition: ~p, error: ~p",
+                       [Key, Partition, Reason]),
           State1 = State0#state{modstate = ModState1},
           {noreply, State1}
     end;
@@ -107,14 +186,14 @@ handoff_finished(TargetNode, State = #state{partition = Partition}) ->
 
 handle_handoff_data(BinData,
                     State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
-    {Key, Value} = binary_to_term(BinData),
+    {Key, Content} = binary_to_term(BinData),
     logger:info("handoff data received ~p: ~p", [Partition, Key]),
-    {ok, ModState1} = Mod:put(Key, Value, ModState0),
+    {ok, ModState1} = Mod:put(Key, Content, ModState0),
     State1 = State0#state{modstate = ModState1},
     {reply, ok, State1}.
 
-encode_handoff_item(Key, Value) ->
-    term_to_binary({Key, Value}).
+encode_handoff_item(Key, Content) ->
+    term_to_binary({Key, Content}).
 
 handle_overload_command(_, _, _) ->
     ok.
@@ -159,8 +238,8 @@ handle_coverage({_, objects},
                 State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Acc0 = [],
     Fun =
-        fun (Key, Value, Accum) ->
-                [rclref_object:new(Key, Value, Partition, node())] ++ Accum
+        fun (Key, Content, Accum) ->
+                [rclref_object:new(Key, Content, Partition, node())] ++ Accum
         end,
     Acc1 = Mod:fold_objects(Fun, Acc0, ModState0),
     {reply, {ReqId, Acc1}, State0}.

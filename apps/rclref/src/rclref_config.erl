@@ -6,9 +6,9 @@
          timeout_get/0, timeout_coverage/0, http_port/0, http_acceptors/0,
          http_max_connections/0]).
 
--spec storage_backend() -> ets | other.
+-spec storage_backend() -> ets | dets | other.
 storage_backend() ->
-    Backends = [ets, other],
+    Backends = [ets, dets, other],
     {ok, Backend} = application:get_env(rclref, storage_backend),
     case lists:member(Backend, Backends) of
       true ->

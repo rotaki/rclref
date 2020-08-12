@@ -6,8 +6,6 @@
 -export([all/0, init_per_suite/1, end_per_suite/1]).
 -export([http_api_test/1]).
 
--define(N, rclref_config:n_val()).
-
 all() ->
     [http_api_test].
 
@@ -56,9 +54,5 @@ http_api_test(Config) ->
     <<"not_found">> = maps:get(<<"reason">>, maps:get(<<"error">>, jsx:decode(Response1))),
     ok.
 
-
-    
 atom_to_binary(Atom) ->
     list_to_binary(atom_to_list(Atom)).
-
-    

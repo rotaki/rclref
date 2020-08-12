@@ -2,7 +2,8 @@
 
 -compile({no_auto_import, [{put, 2}]}).
 
--export([ping/0, put/1, put/2, get/1, get/2, delete/1]).
+-export([ping/0, put/1, put/2, get/1, get/2, delete/1, delete/2, reap_tombs/1,
+         reap_tombs/2]).
 -export([list_unique_keys/0, list_unique_keys/1]).
 -export([list_all_keys/0, list_all_keys/1, list_all_objects/0, list_all_objects/1]).
 
@@ -10,7 +11,9 @@
 
 -define(TIMEOUT_PUT, rclref_config:timeout_put()).
 -define(TIMEOUT_GET, rclref_config:timeout_get()).
+-define(TIMEOUT_REAP_TOMBS, 100000).
 -define(TIMEOUT_COVERAGE, rclref_config:timeout_coverage()).
+-define(N, rclref_config:n_val()).
 
 %% Public API
 
@@ -66,6 +69,22 @@ delete(Key) ->
 delete(Key, Options) when is_list(Options) ->
     RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
+
+-spec reap_tombs(rclref_object:key()) -> ok.
+reap_tombs(Key) ->
+    reap_tombs(Key, []).
+
+-spec reap_tombs(rclref_object:key(), Options :: [term()]) -> ok.
+reap_tombs(Key, Options) when is_list(Options) ->
+    DocIdx = riak_core_util:chash_key({Key, undefined}),
+    PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
+    lists:foreach(fun ({IndexNode, _}) ->
+                          riak_core_vnode_master:command(IndexNode,
+                                                         {reap_tombs_request, Key},
+                                                         rclref_vnode_master)
+                  end,
+                  PrefList),
+    ok.
 
 -spec list_unique_keys() -> {ok, [rclref_object:key()]}.
 list_unique_keys() ->

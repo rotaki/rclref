@@ -39,23 +39,21 @@ result_of_put(Pid, Result) ->
 init([ReqId, Client_Pid, Client_Node, RObj, Options]) ->
     logger:info("Initializing PutStatem, Pid:~p", [self()]),
     Key = rclref_object:key(RObj),
-    Value = rclref_object:value(RObj),
-    Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
+    TimeoutPut = proplists:get_value(timeout_put, Options, ?TIMEOUT_PUT),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State =
         #state{req_id = ReqId,
                client_pid = Client_Pid,
                client_node = Client_Node,
                preflist = PrefList},
-    Fn =
-        fun (IndexNode) ->
-                riak_core_vnode_master:command(IndexNode,
-                                               {kv_put_request, Key, Value, self()},
-                                               rclref_vnode_master)
-        end,
-    [Fn(IndexNode) || {IndexNode, _Type} <- PrefList],
-    {ok, waiting, State, [{state_timeout, Timeout, hard_stop}]}.
+    lists:foreach(fun ({IndexNode, _}) ->
+                          riak_core_vnode_master:command(IndexNode,
+                                                         {kv_put_request, RObj, self(), node()},
+                                                         rclref_vnode_master)
+                  end,
+                  PrefList),
+    {ok, waiting, State, [{state_timeout, TimeoutPut, hard_stop}]}.
 
 callback_mode() ->
     state_functions.
