@@ -19,13 +19,13 @@
          client_node :: node(),
          preflist :: [term()],
          num_ok = 0 :: non_neg_integer(),
-         num_not_found = 0 :: non_neg_integer(),
          num_vnode_error = 0 :: non_neg_integer(),
+         vnode_errors = [] :: [rclref_object:vnode_error()],
          riak_objects = [] :: [rclref_object:riak_obejct()]}).
 
 -spec start_link([term()]) -> {ok, pid()}.
-start_link([ReqId, Client_Pid, Client_Node, Key, Options]) ->
-    gen_statem:start_link(?MODULE, [ReqId, Client_Pid, Client_Node, Key, Options], []).
+start_link([ReqId, ClientPid, ClientNode, Key, Options]) ->
+    gen_statem:start_link(?MODULE, [ReqId, ClientPid, ClientNode, Key, Options], []).
 
 -spec stop(pid(), any()) -> ok.
 stop(Pid, Reason) ->
@@ -34,22 +34,21 @@ stop(Pid, Reason) ->
 % API (called by vnodes)
 -spec result_of_get(pid(),
                     {ok, rclref_object:riak_object()} |
-                    {error, not_found} |
-                    {error, vnode_error}) ->
+                    {error, rclref_object:vnode_error()}) ->
                        ok.
 result_of_get(Pid, Result) ->
     gen_statem:cast(Pid, Result).
 
 % Callbacks
-init([ReqId, Client_Pid, Client_Node, Key, Options]) ->
+init([ReqId, ClientPid, ClientNode, Key, Options]) ->
     logger:info("Initializing GetStatem, Pid:~p", [self()]),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     TimeoutGet = proplists:get_value(timeout_get, Options, ?TIMEOUT_GET),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State =
         #state{req_id = ReqId,
-               client_pid = Client_Pid,
-               client_node = Client_Node,
+               client_pid = ClientPid,
+               client_node = ClientNode,
                preflist = PrefList},
     lists:foreach(fun ({IndexNode, _}) ->
                           riak_core_vnode_master:command(IndexNode,
@@ -69,91 +68,72 @@ terminate(Reason, _StateName, _State) ->
     logger:info("Terminating GetStatem, Pid:~p, Reason:~p", [self(), Reason]),
     ok.
 
-% waiting for results from vnodes
+% WAITING STATE will wait for ?R vnodes to return {ok, RObj}
+% When a vnode returns {ok, RObj}
 waiting(cast,
         {ok, RObj},
         State =
-            #state{client_pid = Client_Pid,
+            #state{client_pid = ClientPid,
                    req_id = ReqId,
-                   num_ok = Num_ok0,
+                   num_ok = NumOk0,
                    riak_objects = RObjs0}) ->
-    Num_ok = Num_ok0 + 1,
+    % Update State
+    NumOk = NumOk0 + 1,
     RObjs = RObjs0 ++ [RObj],
-    NewState = State#state{num_ok = Num_ok, riak_objects = RObjs},
-    case Num_ok >= ?R of
+    NewState = State#state{num_ok = NumOk, riak_objects = RObjs},
+
+    % When more than or equal to ?R vnodes responded with {ok, RObj}, return ?R RObjs to client
+    case NumOk >= ?R of
       true ->
-          %TODO: Next state for read repair
-          Client_Pid ! {ReqId, {ok, RObjs}},
+          ClientPid ! {ReqId, {ok, RObjs}},
           {next_state, finalize, NewState, [{state_timeout, ?TIMEOUT_REPAIR, hard_stop}]};
       false ->
           {keep_state, NewState}
     end;
+% When a vnode returns {error, VnodeError}
 waiting(cast,
-        {error, not_found},
+        {error, VnodeError},
         State =
-            #state{client_pid = Client_Pid,
+            #state{client_pid = ClientPid,
                    req_id = ReqId,
-                   num_not_found = Num_not_found0,
-                   num_vnode_error = Num_vnode_error0}) ->
-    Num_not_found = Num_not_found0 + 1,
-    NewState = State#state{num_not_found = Num_not_found},
-    Reason =
-        case Num_not_found >= Num_vnode_error0 of
-          true ->
-              not_found;
-          false ->
-              vnode_error
-        end,
-    case Num_not_found + Num_vnode_error0 > ?N - ?R of
+                   num_vnode_error = NumVnodeError0,
+                   vnode_errors = VnodeErrors0,
+                   riak_objects = RObjs0}) ->
+    % Update State
+    NumVnodeError = NumVnodeError0 + 1,
+    VnodeErrors = [VnodeError] ++ VnodeErrors0,
+    NewState = State#state{num_vnode_error = NumVnodeError, vnode_errors = VnodeErrors},
+
+    % When more than (?N-?R) vnodes responded with {error, VnodeError}, return all RObjs and VNodeErrors it has received to client
+    case NumVnodeError > ?N - ?R of
       true ->
-          Client_Pid ! {ReqId, {error, Reason}},
+          ClientPid ! {ReqId, {error, RObjs0 ++ VnodeErrors}},
           {next_state, finalize, NewState, [{state_timeout, ?TIMEOUT_REPAIR, hard_stop}]};
-      false ->
+      _ ->
           {keep_state, NewState}
     end;
-waiting(cast,
-        {error, vnode_error},
-        State =
-            #state{client_pid = Client_Pid,
-                   req_id = ReqId,
-                   num_not_found = Num_not_found0,
-                   num_vnode_error = Num_vnode_error0}) ->
-    Num_vnode_error = Num_vnode_error0 + 1,
-    NewState = State#state{num_vnode_error = Num_vnode_error},
-    Reason =
-        case Num_not_found0 >= Num_vnode_error of
-          true ->
-              not_found;
-          false ->
-              vnode_error
-        end,
-    case Num_not_found0 + Num_vnode_error > ?N - ?R of
-      true ->
-          Client_Pid ! {ReqId, {error, Reason}},
-          {next_state, finalize, NewState, [{state_timeout, ?TIMEOUT_REPAIR, hard_stop}]};
-      false ->
-          {keep_state, NewState}
-    end;
+% When waiting timeouts, go to finalize state
 waiting(state_timeout,
         hard_stop,
-        State = #state{req_id = ReqId, client_pid = Client_Pid}) ->
-    Client_Pid ! {ReqId, {error, timeout}},
+        State = #state{req_id = ReqId, client_pid = ClientPid}) ->
+    ClientPid ! {ReqId, {error, timeout}},
     {next_state, finalize, State, [{state_timeout, ?TIMEOUT_REPAIR, hard_stop}]};
 waiting(_EventType, _EventContent, State = #state{}) ->
     {keep_state, State}.
 
-% read repair
+% FINALIZE STATE will wait for ?N vnodes to return response and then issue read_pair
+% When a vnode returns {ok, RObj}
 finalize(cast,
          {ok, RObj},
          State =
-             #state{num_ok = Num_ok0,
-                    num_not_found = Num_not_found0,
-                    num_vnode_error = Num_vnode_error0,
-                    riak_objects = RObjs0}) ->
-    Num_ok = Num_ok0 + 1,
+             #state{num_ok = NumOk0, num_vnode_error = NumVnodeError0, riak_objects = RObjs0}) ->
+    % Update State
+    NumOk = NumOk0 + 1,
     RObjs = [RObj] ++ RObjs0,
-    NewState = State#state{num_ok = Num_ok, riak_objects = RObjs},
-    case Num_ok + Num_not_found0 + Num_vnode_error0 >= ?N of
+    NewState = State#state{num_ok = NumOk, riak_objects = RObjs},
+
+    % When all ?N vnodes has responded, do read_repair
+    case NumOk + NumVnodeError0 >= ?N of
       true ->
           MergedRObj = rclref_object:merge(RObjs),
           ok = repair(MergedRObj, RObjs),
@@ -161,18 +141,20 @@ finalize(cast,
       false ->
           {keep_state, NewState}
     end;
+% When a vnode returns {error, VnodeError}
 finalize(cast,
-         {error, not_found},
+         {error, _VnodeError},
          State =
-             #state{num_ok = Num_ok0,
-                    num_not_found = Num_not_found0,
-                    num_vnode_error = Num_vnode_error0,
-                    riak_objects = RObjs0}) ->
-    Num_not_found = Num_not_found0 + 1,
-    NewState = State#state{num_not_found = Num_not_found},
-    case Num_ok0 + Num_not_found + Num_vnode_error0 >= ?N of
+             #state{num_ok = NumOk0, num_vnode_error = NumVnodeError0, riak_objects = RObjs0}) ->
+    % Update Satte
+    NumVnodeError = NumVnodeError0 + 1,
+    NewState = State#state{num_vnode_error = NumVnodeError},
+
+    % When all ?N vnodes has responded, do read_repair
+    case NumOk0 + NumVnodeError >= ?N of
       true ->
           case RObjs0 of
+            % When any of the vnodes responded with {ok, RObj}, do not issue read_repair
             [] ->
                 {stop, normal, NewState};
             _ ->
@@ -183,28 +165,7 @@ finalize(cast,
       false ->
           {keep_state, NewState}
     end;
-finalize(cast,
-         {error, vnode_error},
-         State =
-             #state{num_ok = Num_ok0,
-                    num_not_found = Num_not_found0,
-                    num_vnode_error = Num_vnode_error0,
-                    riak_objects = RObjs0}) ->
-    Num_vnode_error = Num_vnode_error0 + 1,
-    NewState = State#state{num_vnode_error = Num_vnode_error},
-    case Num_ok0 + Num_not_found0 + Num_vnode_error >= ?N of
-      true ->
-          case RObjs0 of
-            [] ->
-                {stop, normal, NewState};
-            _ ->
-                MergedRObj = rclref_object:merge(RObjs0),
-                ok = repair(MergedRObj, RObjs0),
-                {stop, normal, NewState}
-          end;
-      false ->
-          {keep_state, NewState}
-    end;
+% When finalize state timeouts, issue a read_repair
 finalize(state_timeout, hard_stop, State = #state{riak_objects = RObjs}) ->
     case RObjs of
       [] ->
@@ -217,13 +178,14 @@ finalize(state_timeout, hard_stop, State = #state{riak_objects = RObjs}) ->
 finalize(_EventType, _EventContent, State = #state{}) ->
     {keep_state, State}.
 
+% Use RObj to repair vnodes with different content (i.e Value, VClock)
 repair(RObj, RObjs) ->
     Key = rclref_object:key(RObj),
     Content = rclref_object:content(RObj),
+    % Exclude vnodes that has the same content
     OkNodesIndexes =
         [{rclref_object:partition(X), rclref_object:node(X)}
          || X <- RObjs, Key =:= rclref_object:key(X), Content =:= rclref_object:content(X)],
-
     DocIdx = riak_core_util:chash_key({Key, undefined}),
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     lists:foreach(fun ({IndexNode, _}) ->
