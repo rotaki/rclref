@@ -1,7 +1,6 @@
 -module(rclref_client).
 
--export([put/2, put/3, get/1, get/2, delete/1, delete/2, reap_tombs/1, reap_tombs/2,
-         list_keys/0, list_keys/1]).
+-export([put/2, put/3, get/1, get/2, delete/1, delete/2, list_keys/0, list_keys/1]).
 
 -spec put(rclref_object:key(), rclref_object:value()) ->
              ok | {error, timeout} | {error, partial} | {error, [term()]}.
@@ -11,7 +10,6 @@ put(Key, Value) ->
 -spec put(rclref_object:key(), rclref_object:value(), [term()]) ->
              ok | {error, timeout} | {error, partial} | {error, [term()]}.
 put(Key, Value, Options) when is_list(Options) ->
-    % make value binary?
     RObj = rclref_object:new(Key, Value),
     case rclref:put(RObj) of
       {ok, _} ->
@@ -29,16 +27,35 @@ put(Key, Value, Options) when is_list(Options) ->
     end.
 
 -spec get(rclref_object:key()) ->
-             ok | {error, timeout} | {error, partial} | {error, not_found} | {error, [term()]}.
+             {ok, [rclref_object:value()]} |
+             {error, timeout} |
+             {error, partial} |
+             {error, not_found} |
+             {error, [term()]}.
 get(Key) ->
     get(Key, []).
 
 -spec get(rclref_object:key(), [term()]) ->
-             ok | {error, timeout} | {error, partial} | {error, not_found} | {error, [term()]}.
+             {ok, [rclref_object:value()]} |
+             {error, timeout} |
+             {error, partial} |
+             {error, not_found} |
+             {error, [term()]}.
 get(Key, Options) when is_list(Options) ->
     case rclref:get(Key, Options) of
       {ok, RObjs} ->
-          {ok, [rclref_object:value(RObj) || RObj <- RObjs]};
+          case lists:all(fun (RObj) ->
+                                 undefined =:= rclref_object:value(RObj)
+                         end,
+                         RObjs)
+              of
+            true ->
+                {error, not_found};
+            _ ->
+                {ok,
+                 [rclref_object:value(RObj)
+                  || RObj <- RObjs, undefined =/= rclref_object:value(RObj)]}
+          end;
       {error, timeout} ->
           {error, timeout};
       {error, Items} ->
@@ -70,23 +87,19 @@ delete(Key) ->
 delete(Key, Options) when is_list(Options) ->
     put(Key, undefined, Options).
 
--spec reap_tombs(rclref_object:key()) -> ok.
-reap_tombs(Key) ->
-    reap_tombs(Key, []).
-
--spec reap_tombs(rclref_object:key(), [term()]) -> ok.
-reap_tombs(Key, Options) ->
-    rclref:reap_tombs(Key, Options).
-
 -spec list_keys() -> {ok, [rclref_object:key()]}.
 list_keys() ->
     list_keys([]).
 
 -spec list_keys([term()]) -> {ok, [rclref_object:key()]}.
 list_keys(Options) when is_list(Options) ->
-    rclref:list_unique_keys(Options).
+    {ok, RObjs} = rclref:list_unique_objects(Options),
+    Keys =
+        [rclref_object:key(RObj) || RObj <- RObjs, undefined =/= rclref_object:value(RObj)],
+    {ok, lists:usort(Keys)}.
 
--spec contain_robj([rclref_object:riak_object() | rclref_object:vnode_error()]) -> boolean().
+-spec contain_robj([rclref_object:riak_object() | rclref_object:vnode_error()]) ->
+                      boolean().
 contain_robj([Item | Items]) ->
     case rclref_object:is_robj(Item) of
       true ->

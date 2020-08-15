@@ -31,29 +31,22 @@ node_join_test(Config) ->
     % Node2, Node3, Node4 will join Node1
     ok = rclref_cluster_manager:add_nodes_to_cluster(Node1, [Node2, Node3, Node4]),
 
-    % generate key, value and create riak_object e.g. key--Node1, value--Node1
+    % generate key, value e.g. key--Node1, value--Node1
     Keys = ["key--" ++ atom_to_list(Name) || Name <- Names],
     Values = ["value--" ++ atom_to_list(Name) || Name <- Names],
-    RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
 
-    % put rclref_objects into nodes respectively
-    % node Node1 puts {key--Node1, value--Node1}, Node2 puts {key--Node2, value--Node2}, Node3...
-    lists:foreach(fun ({Node, RObj}) ->
-                          ?assertEqual(ok, rpc:call(Node, rclref, put, [RObj]))
+    % put Key-Values into nodes respectively
+    % Node1 puts {key--Node1, value--Node1}, Node2 puts {key--Node2, value--Node2}, Node3...
+    lists:foreach(fun({Node, {Key, Value}}) ->
+                          ok = rpc:call(Node, rclref_client, put, [Key, Value])
                   end,
-                  lists:zip(Nodes, RObjs)),
-
-    % get
+                 lists:zip(Nodes, lists:zip(Keys, Values))),
+    % get Key-Values
     % Node1 gets key--Node4, Node2 gets key--Node3, Node3 ...
-    % rclref:get will return several copies of the riak_objects depending on n_val
-    % check the first copy only
-    NodeKeySets = lists:zip(Nodes, lists:reverse(Keys)),
-    GotRObjs =
-        lists:map(fun ({Node, Key}) ->
-                          {ok, RObjsPerNode} = rpc:call(Node, rclref, get, [Key]),
-                          lists:nth(1, RObjsPerNode)
+    NodeKeySets = lists:zip(Nodes, lists:reverse(lists:zip(Keys, Values))),
+    lists:foreach(fun ({Node, {Key, Value}}) ->
+                          {ok, GotValues} = rpc:call(Node, rclref_client, get, [Key]),
+                          true = lists:all(fun(GotValue) -> Value =:= GotValue end, GotValues)
                   end,
                   NodeKeySets),
-    GotValues = [rclref_object:value(RObj) || RObj <- GotRObjs],
-    ?assertEqual(lists:sort(Values), lists:sort(GotValues)),
     ok.

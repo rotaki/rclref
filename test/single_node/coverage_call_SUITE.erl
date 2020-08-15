@@ -23,44 +23,58 @@ end_per_suite(Config) ->
     node_utils:kill_nodes(Nodes),
     Config.
 
-
+% rclref:list_unique_keys, rclref:list_all_keys, rclref:list_all_objects
 coverage_call_test(Config) ->
     [Node] = ?config(nodes, Config),
-    Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
-    Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
+    Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(21, 40)],
+    Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(21, 40)],
     RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
+
+    % check empty
+    {ok, []} = rpc:call(Node, rclref, list_unique_keys, []),
+
     % put 20 key values
     lists:foreach(fun (RObj) ->
-                          ok = rpc:call(Node, rclref, put, [RObj])
+                          {ok, _} = rpc:call(Node, rclref, put, [RObj])
                   end,
                   RObjs),
+
     % check listing of unique keys
-    ?assertEqual({ok, lists:usort(Keys)}, rpc:call(Node, rclref, list_unique_keys, [])),
+    {ok, GotUniqueKeys} = rpc:call(Node, rclref, list_unique_keys, []),
+    ?assertEqual({ok, lists:sort(Keys)}, {ok, lists:sort(GotUniqueKeys)}),
 
     % check listing of all keys
-    {ok, GotKeys} = rpc:call(Node, rclref, list_all_keys, []),
-
+    {ok, GotAllKeys} = rpc:call(Node, rclref, list_all_keys, []),
     lists:foreach(fun (Key) ->
-                          ?N =:= count_keys(Key, GotKeys)
+                          ?N =:= count_keys(Key, GotAllKeys)
                   end,
                   Keys),
 
     % check listing of all RObjs
-    {ok, GotRObjs} = rpc:call(Node, rclref, list_all_objects, []),
+    {ok, GotAllRObjs} = rpc:call(Node, rclref, list_all_objects, []),
     lists:foreach(fun (RObj) ->
-                          ?N =:= count_objects(RObj, GotRObjs)
+                          ?N =:= count_objects(RObj, GotAllRObjs)
                   end,
                   RObjs),
+
+    % delete RObjs
+    lists:foreach(fun (Key) ->
+                          {ok, _} = rpc:call(Node, rclref, delete, [Key]),
+                          ok = rpc:call(Node, rclref, reap_tombs, [Key])
+                  end,
+                  Keys),
+
+    % check empty
+    {ok, []} = rpc:call(Node, rclref, list_unique_keys, []),
     ok.
 
-
-% count number of occurrences of key X in list Y
 % private
+% count number of occurrences of key X in list Y
 count_keys(X, Y) ->
     length([E || E <- Y, E =:= X]).
 
-% count number of occurrences of object (key, value) X in list Y
 % private
+% count number of occurrences of object (key, value) X in list Y
 count_objects(X, Y) ->
     length([E
             || E <- Y,

@@ -4,7 +4,8 @@
 
 -export([ping/0, put/1, put/2, get/1, get/2, delete/1, delete/2, reap_tombs/1,
          reap_tombs/2]).
--export([list_unique_keys/0, list_unique_keys/1]).
+-export([list_unique_keys/0, list_unique_keys/1, list_unique_objects/0,
+         list_unique_objects/1]).
 -export([list_all_keys/0, list_all_keys/1, list_all_objects/0, list_all_objects/1]).
 
 -ignore_xref([{ping, 0}]).
@@ -112,11 +113,19 @@ list_all_keys() ->
 list_all_keys(Options) when is_list(Options) ->
     coverage_request({all, keys}, Options).
 
--spec list_all_objects() -> {ok, [rclref_object:object()]}.
+-spec list_unique_objects() -> {ok, [rclref_object:riak_object()]}.
+list_unique_objects() ->
+    list_unique_objects([]).
+
+-spec list_unique_objects(Options :: [term()]) -> {ok, [rclref_object:riak_object()]}.
+list_unique_objects(Options) when is_list(Options) ->
+    coverage_request({all, objects}, Options).
+
+-spec list_all_objects() -> {ok, [rclref_object:riak_object()]}.
 list_all_objects() ->
     list_all_objects([]).
 
--spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
+-spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:riak_object()]}.
 list_all_objects(Options) when is_list(Options) ->
     coverage_request({all, objects}, Options).
 
@@ -124,7 +133,7 @@ list_all_objects(Options) when is_list(Options) ->
 -spec coverage_request(term(), [term()]) ->
                           {error, timeout} |
                           {ok, [rclref_object:key()]} |
-                          {ok, [rclref_object:object()]}.
+                          {ok, [rclref_object:riak_object()]}.
 coverage_request(Request, Options) ->
     {ok, ReqId} =
         rclref_coverage_fsm_sup:start_coverage_fsm([self(), node(), Request, Options]),

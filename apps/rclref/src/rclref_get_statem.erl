@@ -33,8 +33,7 @@ stop(Pid, Reason) ->
 
 % API (called by vnodes)
 -spec result_of_get(pid(),
-                    {ok, rclref_object:riak_object()} |
-                    {error, rclref_object:vnode_error()}) ->
+                    {ok, rclref_object:riak_object()} | {error, rclref_object:vnode_error()}) ->
                        ok.
 result_of_get(Pid, Result) ->
     gen_statem:cast(Pid, Result).

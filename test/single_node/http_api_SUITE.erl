@@ -22,37 +22,49 @@ end_per_suite(Config) ->
     Config.
 
 http_api_test(Config) ->
-    [Node] = ?config(nodes, Config),
+    [_Node] = ?config(nodes, Config),
     [Port] = ?config(ports, Config),
     HttpPort = Port + 1,
-    Key0 = "key--0",
-    Value0 = "value--0",
-    URLstring = "http://localhost:"  ++ integer_to_list(HttpPort) ++ "/rclref/",
-    URL0 = list_to_binary(URLstring ++ Key0),
+    Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
+    Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
+    URLs = [list_to_binary("http://localhost:"  ++ integer_to_list(HttpPort) ++ "/rclref/" ++ Key) || Key <- Keys],
 
-    % put "key--0", "value--0"
-    {ok, 200, _, ClientRef} = hackney:request(post, URL0, [], Value0, []),
-    {ok, <<>>} = hackney:body(ClientRef),
-
-    % get "key--0"
-    {ok, 200, _, ClientRef0} = hackney:request(get, URL0, [], <<>>, []),
-    {ok, Response0} = hackney:body(ClientRef0),
-    Items = maps:get(<<"items">>, jsx:decode(Response0)),
-    lists:all(fun(Item) ->
-                      ?assertEqual(list_to_binary(Key0), maps:get(<<"key">>, Item)),
-                      ?assertEqual(list_to_binary(Value0), maps:get(<<"value">>, Item)),
-                      ?assertEqual(atom_to_binary(Node), maps:get(<<"node">>, Item)),
-                      true
-              end,
-              Items),
+    % check not_found
+    lists:foreach(fun(URL) ->
+                          {ok, 404, _, ClientRef} = hackney:request(get, URL, [], <<>>, []),
+                          {ok, Response} = hackney:body(ClientRef),
+                          404 = maps:get(<<"code">>, maps:get(<<"error">>, jsx:decode(Response))),
+                          <<"not_found">> = maps:get(<<"reason">>, maps:get(<<"error">>, jsx:decode(Response)))
+                  end, URLs),
     
-    % get "key--1" (error)
-    Key1 = "key--1",
-    URL1 = list_to_binary(URLstring ++ Key1),
-    {ok, 500, _, ClientRef1} = hackney:request(get, URL1, [], <<>>, []),
-    {ok, Response1} = hackney:body(ClientRef1),
-    <<"not_found">> = maps:get(<<"reason">>, maps:get(<<"error">>, jsx:decode(Response1))),
+    % put values
+    lists:foreach(fun({URL, Value}) ->
+                          {ok, 200, _, ClientRef} = hackney:request(post, URL, [], Value, []),
+                          {ok, Response} = hackney:body(ClientRef),
+                          200 = maps:get(<<"code">>, maps:get(<<"ok">>, jsx:decode(Response)))
+                  end, lists:zip(URLs, Values)),
+    
+    % confirm values
+    lists:foreach(fun({URL, Value}) ->
+                          {ok, 200, _, ClientRef} = hackney:request(get, URL, [], <<>>, []),
+                          {ok, Response} = hackney:body(ClientRef),
+                          200 = maps:get(<<"code">>, maps:get(<<"ok">>, jsx:decode(Response))),
+                          GotValues = maps:get(<<"values">>, maps:get(<<"ok">>, jsx:decode(Response))),
+                          true = lists:all(fun(GotValue) -> list_to_binary(Value) =:= GotValue end, GotValues)
+                  end, lists:zip(URLs, Values)),
+    
+    % delete values
+    lists:foreach(fun(URL) ->
+                          {ok, 200, _, ClientRef} = hackney:request(delete, URL, [], <<>>, []),
+                          {ok, Response} = hackney:body(ClientRef),
+                          200 = maps:get(<<"code">>, maps:get(<<"ok">>, jsx:decode(Response)))
+                  end, URLs),
+    
+    % confirm not_found
+    lists:foreach(fun(URL) ->
+                          {ok, 404, _, ClientRef} = hackney:request(get, URL, [], <<>>, []),
+                          {ok, Response} = hackney:body(ClientRef),
+                          404 = maps:get(<<"code">>, maps:get(<<"error">>, jsx:decode(Response))),
+                          <<"not_found">> = maps:get(<<"reason">>, maps:get(<<"error">>, jsx:decode(Response)))
+                  end, URLs),
     ok.
-
-atom_to_binary(Atom) ->
-    list_to_binary(atom_to_list(Atom)).

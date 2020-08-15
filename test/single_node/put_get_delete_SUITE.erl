@@ -19,51 +19,87 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
     Nodes = ?config(nodes, Config),
     node_utils:kill_nodes(Nodes),
-    Config.
+    Config.                                           
 
 put_get_delete_test(Config) ->
     [Node] = ?config(nodes, Config),
-    Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
-    Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
+    Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(20, 40)],
+    Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(20, 40)],
     RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
+    
+    % confirm not_found
     lists:foreach(fun (Key) ->
-                          {error, not_found} = rpc:call(Node, rclref, get, [Key])
+                          {error, VnodeErrors} = rpc:call(Node, rclref, get, [Key]),
+                          true = lists:all(fun(VnodeError) ->
+                                                   not_found =:= rclref_object:error_reason(VnodeError)
+                                           end, VnodeErrors)
                   end,
                   Keys),
+
     % put 20 key values
     lists:foreach(fun (RObj) ->
-                          ok = rpc:call(Node, rclref, put, [RObj])
+                          {ok, GotRObjs} = rpc:call(Node, rclref, put, [RObj]),
+                          true = 
+                              lists:all(fun (GotRObj) ->
+                                                have_same_keyvalue(RObj, GotRObj)
+                                        end,
+                                        GotRObjs)
                   end,
                   RObjs),
+
     % confirm 20 key values
     lists:foreach(fun ({RObj, Key}) ->
                           {ok, GotRObjs} = rpc:call(Node, rclref, get, [Key]),
                           true =
                               lists:all(fun (GotRObj) ->
-                                                has_same_keyvalue(RObj, GotRObj)
+                                                have_same_keyvalue(RObj, GotRObj)
                                         end,
                                         GotRObjs)
                   end,
                   lists:zip(RObjs, Keys)),
+
     % delete 20 key values
     lists:foreach(fun (Key) ->
-                          ok = rpc:call(Node, rclref, delete, [Key])
+                          {ok, GotRObjs} = rpc:call(Node, rclref, delete, [Key]),
+                          RObj = rclref_object:new(Key, undefined),
+                          true =
+                              lists:all(fun (GotRObj) ->
+                                                have_same_keyvalue(RObj, GotRObj)
+                                        end,
+                                       GotRObjs)
                   end,
                   Keys),
+
+    % confirm undefined values
+    lists:foreach(fun(Key) ->
+                          {ok, GotRObjs} = rpc:call(Node, rclref, get, [Key]),
+                          RObj = rclref_object:new(Key, undefined),
+                          true =
+                              lists:all(fun(GotRObj) ->
+                                                 have_same_keyvalue(RObj, GotRObj)
+                                         end,
+                                        GotRObjs)
+                  end,
+                  Keys),
+
     % reap tombs
     lists:foreach(fun (Key) ->
                           ok = rpc:call(Node, rclref, reap_tombs, [Key])
                   end,
                   Keys),
+
     % confirm deleted
     lists:foreach(fun (Key) ->
-                          {error, not_found} = rpc:call(Node, rclref, get, [Key])
+                          {error, VnodeErrors} = rpc:call(Node, rclref, get, [Key]),
+                          true = lists:all(fun(VnodeError) ->
+                                                   not_found =:= rclref_object:error_reason(VnodeError)
+                                           end, VnodeErrors)
                   end,
                   Keys),
     ok.
 
 % private
-has_same_keyvalue(RObj1, RObj2) ->
+have_same_keyvalue(RObj1, RObj2) ->
     ?assertEqual(rclref_object:key(RObj1), rclref_object:key(RObj2)),
     ?assertEqual(rclref_object:value(RObj1), rclref_object:value(RObj2)),
     true.
