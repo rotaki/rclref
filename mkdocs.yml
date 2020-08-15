@@ -1,0 +1,6 @@
+site_name: rclref
+theme: readthedocs
+markdown_extensions:
+    - pymdownx.highlight:
+        use_pygments: true
+        linenums: true
