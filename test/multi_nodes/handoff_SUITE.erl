@@ -28,13 +28,12 @@ handoff_test(Config) ->
 
     Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
     Values = ["value--" ++ integer_to_list(Num) || Num <- lists:seq(1, 20)],
-    RObjs = [rclref_object:new(Key, Value) || {Key, Value} <- lists:zip(Keys, Values)],
 
     % put 20 key values into Node1
-    lists:foreach(fun (RObj) ->
-                          ?assertEqual(ok, rpc:call(Node1, rclref, put, [RObj]))
+    lists:foreach(fun ({Key, Value}) ->
+                              ok = rpc:call(Node1, rclref_client, put, [Key, Value])
                   end,
-                  RObjs),
+                 lists:zip(Keys, Values)),
 
     % join Node2 into Node1
     ok = rclref_cluster_manager:add_nodes_to_cluster(Node1, [Node2]),
@@ -45,15 +44,11 @@ handoff_test(Config) ->
     [Node1, Node2] = lists:sort(CurrentRingMembers0),
 
     % confirm whether 20 key values are reachable from Node2
-    lists:foreach(fun ({RObj, Key}) ->
-                          {ok, GotRObjs} = rpc:call(Node2, rclref, get, [Key]),
-                          true =
-                              lists:all(fun (GotRObj) ->
-                                                has_same_keyvalue(RObj, GotRObj)
-                                        end,
-                                        GotRObjs)
+    lists:foreach(fun({Key, Value}) ->
+                          {ok, GotValues} = rpc:call(Node2, rclref_client, get, [Key]),
+                          true = lists:all(fun(GotValue) -> Value =:= GotValue end, GotValues)
                   end,
-                  lists:zip(RObjs, Keys)),
+                  lists:zip(Keys, Values)),
 
     % Node1 leave the cluster
     ok = rclref_cluster_manager:leave_cluster(Node1),
@@ -67,23 +62,13 @@ handoff_test(Config) ->
     [Node2] = lists:sort(CurrentRingMembers1),
 
     % confirm whether 20 key values are still reachable from Node2
-    lists:foreach(fun ({RObj, Key}) ->
-                          {ok, GotRObjs} = rpc:call(Node2, rclref, get, [Key]),
-                          true =
-                              lists:all(fun (GotRObj) ->
-                                                has_same_keyvalue(RObj, GotRObj)
-                                        end,
-                                        GotRObjs)
+    lists:foreach(fun ({Key, Value}) ->
+                          {ok, GotValues} = rpc:call(Node2, rclref_client, get, [Key]),
+                          true = lists:all(fun(GotValue) -> Value =:= GotValue end, GotValues)
                   end,
-                  lists:zip(RObjs, Keys)),
+                 lists:zip(Keys, Values)),
 
     ok.
-
-% private
-has_same_keyvalue(RObj1, RObj2) ->
-    ?assertEqual(rclref_object:key(RObj1), rclref_object:key(RObj2)),
-    ?assertEqual(rclref_object:value(RObj1), rclref_object:value(RObj2)),
-    true.
 
 
 

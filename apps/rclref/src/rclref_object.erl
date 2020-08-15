@@ -1,6 +1,6 @@
 -module(rclref_object).
 
--export_type([key/0, value/0, riak_object/0]).
+-export_type([key/0, value/0, riak_object/0, vnode_error/0]).
 
 -type key() :: term().
 -type value() :: term().
@@ -12,11 +12,17 @@
          r_content :: #r_content{},
          partition :: non_neg_integer() | undefined,
          node :: node() | undefined}).
+-record(r_error,
+        {reason :: term(),
+         partition :: non_neg_integer() | undefined,
+         node :: node() | undefined}).
 
 -opaque riak_object() :: #r_object{}.
+-opaque vnode_error() :: #r_error{}.
 
--export([key/1, content/1, partition/1, node/1, value/1, vclock/1, increment_vclock/2,
-         new_vclock/0, merge/1, new/2, new/4, new_content/2]).
+-export([key/1, content/1, partition/1, node/1, value/1, vclock/1, error_reason/1,
+         increment_vclock/2, new_vclock/0, merge/1, new/2, new/4, new_content/2, new_error/3,
+         is_robj/1, is_error/1]).
 
 -spec key(riak_object()) -> key().
 key(#r_object{key = Key}) ->
@@ -46,6 +52,10 @@ vclock(#r_object{r_content = #r_content{vclock = VClock}}) ->
 vclock(#r_content{vclock = VClock}) ->
     VClock.
 
+-spec error_reason(vnode_error()) -> term().
+error_reason(#r_error{reason = Reason}) ->
+    Reason.
+
 -spec new_vclock() -> vclock().
 new_vclock() ->
     vectorclock:new().
@@ -62,6 +72,10 @@ increment_vclock(Node, VClock) ->
 -spec new_content(value(), vclock()) -> #r_content{}.
 new_content(Value, VClock) ->
     #r_content{value = Value, vclock = VClock}.
+
+-spec new_error(term(), non_neg_integer(), node()) -> vnode_error().
+new_error(Reason, Partition, Node) ->
+    #r_error{reason = Reason, partition = Partition, node = Node}.
 
 -spec new(key(), value()) -> riak_object().
 new(Key, Value) ->
@@ -85,3 +99,13 @@ merge([RObj0, RObj1 | RObjs]) ->
               RObj0
         end,
     merge([NewRObj] ++ RObjs).
+
+is_robj(#r_object{}) ->
+    true;
+is_robj(_) ->
+    false.
+
+is_error(#r_error{}) ->
+    true;
+is_error(_) ->
+    false.

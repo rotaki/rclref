@@ -4,7 +4,8 @@
 
 -export([ping/0, put/1, put/2, get/1, get/2, delete/1, delete/2, reap_tombs/1,
          reap_tombs/2]).
--export([list_unique_keys/0, list_unique_keys/1]).
+-export([list_unique_keys/0, list_unique_keys/1, list_unique_objects/0,
+         list_unique_objects/1]).
 -export([list_all_keys/0, list_all_keys/1, list_all_objects/0, list_all_objects/1]).
 
 -ignore_xref([{ping, 0}]).
@@ -30,12 +31,17 @@ ping() ->
     [{IndexNode, _Type}] = PrefList,
     riak_core_vnode_master:sync_spawn_command(IndexNode, ping, rclref_vnode_master).
 
--spec put(rclref_object:riak_object()) -> ok | {error, timeout} | {error, term()}.
+-spec put(rclref_object:riak_object()) ->
+             {ok, [rclref_object:riak_object()]} |
+             {error, [rclref_object:riak_object() | rclref_object:vnode_error()]} |
+             {error, timeout}.
 put(RObj) ->
     put(RObj, []).
 
 -spec put(rclref_object:riak_object(), Options :: [term()]) ->
-             ok | {error, timeout} | {error, term()}.
+             {ok, [rclref_object:riak_object()]} |
+             {error, [rclref_object:riak_object() | rclref_object:vnode_error()]} |
+             {error, timeout}.
 put(RObj, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_put_statem_sup:start_put_statem([self(), node(), RObj, Options]),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
@@ -43,29 +49,34 @@ put(RObj, Options) when is_list(Options) ->
 
 -spec get(rclref_object:key()) ->
              {ok, [rclref_object:riak_object()]} |
+             {error, [rclref_object:riak_object() | rclref_object:errro()]} |
              {error, not_found} |
-             {error, timeout} |
-             {error, term()}.
+             {error, timeout}.
 get(Key) ->
     get(Key, []).
 
 -spec get(rclref_object:key(), Options :: [term()]) ->
              {ok, [rclref_object:riak_object()]} |
+             {error, [rclref_object:riak_object() | rclref_object:errro()]} |
              {error, not_found} |
-             {error, timeout} |
-             {error, term()}.
+             {error, timeout}.
 get(Key, Options) when is_list(Options) ->
     {ok, ReqId} = rclref_get_statem_sup:start_get_statem([self(), node(), Key, Options]),
     Timeout = proplists:get_value(timeout, Options, ?TIMEOUT_GET),
     wait_for_reqid(ReqId, Timeout).
 
--spec delete(rclref_object:key()) -> ok | {error, timeout} | {error, term()}.
+-spec delete(rclref_object:key()) ->
+                {ok, [rclref_object:riak_object()]} |
+                {error, [rclref_object:riak_object() | rclref_object:vnode_error()]} |
+                {error, timeout}.
 delete(Key) ->
     % keep it as a tombstone
     delete(Key, []).
 
 -spec delete(riak_obejct:key(), Options :: [term()]) ->
-                ok | {error, timeout} | {error, term()}.
+                {ok, [rclref_object:riak_object()]} |
+                {error, [rclref_object:riak_object() | rclref_object:vnode_error()]} |
+                {error, timeout}.
 delete(Key, Options) when is_list(Options) ->
     RObj = rclref_object:new(Key, undefined),
     put(RObj, Options).
@@ -102,11 +113,19 @@ list_all_keys() ->
 list_all_keys(Options) when is_list(Options) ->
     coverage_request({all, keys}, Options).
 
--spec list_all_objects() -> {ok, [rclref_object:object()]}.
+-spec list_unique_objects() -> {ok, [rclref_object:riak_object()]}.
+list_unique_objects() ->
+    list_unique_objects([]).
+
+-spec list_unique_objects(Options :: [term()]) -> {ok, [rclref_object:riak_object()]}.
+list_unique_objects(Options) when is_list(Options) ->
+    coverage_request({all, objects}, Options).
+
+-spec list_all_objects() -> {ok, [rclref_object:riak_object()]}.
 list_all_objects() ->
     list_all_objects([]).
 
--spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:object()]}.
+-spec list_all_objects(Options :: [term()]) -> {ok, [rclref_object:riak_object()]}.
 list_all_objects(Options) when is_list(Options) ->
     coverage_request({all, objects}, Options).
 
@@ -114,7 +133,7 @@ list_all_objects(Options) when is_list(Options) ->
 -spec coverage_request(term(), [term()]) ->
                           {error, timeout} |
                           {ok, [rclref_object:key()]} |
-                          {ok, [rclref_object:object()]}.
+                          {ok, [rclref_object:riak_object()]}.
 coverage_request(Request, Options) ->
     {ok, ReqId} =
         rclref_coverage_fsm_sup:start_coverage_fsm([self(), node(), Request, Options]),

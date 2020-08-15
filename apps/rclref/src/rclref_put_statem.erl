@@ -19,24 +19,27 @@
          preflist :: [term()],
          num_ok = 0 :: non_neg_integer(),
          num_vnode_error = 0 :: non_neg_integer(),
+         vnode_errors = [] :: [rclref_object:vnode_error()],
          riak_objects = [] :: [rclref_object:riak_object()]}).
 
 %% Start and Stop
 -spec start_link([term()]) -> {ok, pid()}.
-start_link([ReqId, Client_Pid, Client_Node, RObj, Options]) ->
-    gen_statem:start_link(?MODULE, [ReqId, Client_Pid, Client_Node, RObj, Options], []).
+start_link([ReqId, ClientPid, ClientNode, RObj, Options]) ->
+    gen_statem:start_link(?MODULE, [ReqId, ClientPid, ClientNode, RObj, Options], []).
 
 -spec stop(pid(), term()) -> ok.
 stop(Pid, Reason) ->
     gen_statem:stop(Pid, Reason, infinity).
 
 % API (called by vnodes)
--spec result_of_put(pid(), {ok, ok} | {error, vnode_error}) -> ok.
+-spec result_of_put(pid(),
+                    {ok, rclref_object:riak_object()} | {error, rclref_object:vnode_error()}) ->
+                       ok.
 result_of_put(Pid, Result) ->
     gen_statem:cast(Pid, Result).
 
 % Callbacks
-init([ReqId, Client_Pid, Client_Node, RObj, Options]) ->
+init([ReqId, ClientPid, ClientNode, RObj, Options]) ->
     logger:info("Initializing PutStatem, Pid:~p", [self()]),
     Key = rclref_object:key(RObj),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
@@ -44,8 +47,8 @@ init([ReqId, Client_Pid, Client_Node, RObj, Options]) ->
     PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
     State =
         #state{req_id = ReqId,
-               client_pid = Client_Pid,
-               client_node = Client_Node,
+               client_pid = ClientPid,
+               client_node = ClientNode,
                preflist = PrefList},
     lists:foreach(fun ({IndexNode, _}) ->
                           riak_core_vnode_master:command(IndexNode,
@@ -66,35 +69,54 @@ terminate(Reason, _StateName, _State) ->
     ok.
 
 % State function
+% WAITING STATE will wait for the responses from vnodes until
+% When a vnode return {ok, RObj}
 waiting(cast,
-        {ok, ok},
-        State = #state{req_id = ReqId, client_pid = Client_Pid, num_ok = Num_ok0}) ->
-    Num_ok = Num_ok0 + 1,
-    NewState = State#state{num_ok = Num_ok},
-    case Num_ok >= ?W of
+        {ok, RObj},
+        State =
+            #state{req_id = ReqId,
+                   client_pid = ClientPid,
+                   num_ok = NumOk0,
+                   riak_objects = RObjs0}) ->
+    % Update State
+    RObjs = [RObj] ++ RObjs0,
+    NumOk = NumOk0 + 1,
+    NewState = State#state{num_ok = NumOk, riak_objects = RObjs},
+
+    % When more than or equal to ?W vnodes responded with {ok, RObj}, return ?W RObjs to client
+    case NumOk >= ?W of
       true ->
-          Client_Pid ! {ReqId, ok},
+          ClientPid ! {ReqId, {ok, RObjs}},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
     end;
+% When a vnode return {error, VnodeErrro}
 waiting(cast,
-        {error, vnode_error},
+        {error, VnodeError},
         State =
-            #state{req_id = ReqId, client_pid = Client_Pid, num_vnode_error = Num_vnode_error0}) ->
-    Num_vnode_error = Num_vnode_error0 + 1,
-    NewState = State#state{num_vnode_error = Num_vnode_error},
-    case Num_vnode_error > ?N - ?W of
+            #state{req_id = ReqId,
+                   client_pid = ClientPid,
+                   num_vnode_error = NumVnodeError0,
+                   vnode_errors = VnodeErrors0,
+                   riak_objects = RObjs0}) ->
+    % Update State
+    NumVnodeError = NumVnodeError0 + 1,
+    VnodeErrors = [VnodeError] ++ VnodeErrors0,
+    NewState = State#state{num_vnode_error = NumVnodeError, vnode_errors = VnodeErrors},
+
+    % When more than (?N-?R) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client
+    case NumVnodeError > ?N - ?W of
       true ->
-          Client_Pid ! {ReqId, {error, vnode_error}},
+          ClientPid ! {ReqId, {error, RObjs0 ++ VnodeErrors}},
           {stop, normal, NewState};
       false ->
           {keep_state, NewState}
     end;
 waiting(state_timeout,
         hard_stop,
-        State = #state{req_id = ReqId, client_pid = Client_Pid}) ->
-    Client_Pid ! {ReqId, {error, timeout}},
+        State = #state{req_id = ReqId, client_pid = ClientPid}) ->
+    ClientPid ! {ReqId, {error, timeout}},
     {stop, waiting_timed_out, State};
 waiting(_EventType, _EventContent, State = #state{}) ->
     {keep_state, State}.
