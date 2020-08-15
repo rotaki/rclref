@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>rclref_client - rclref</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "rclref_client";
+    var mkdocs_page_input_path = "API.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rclref</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
+                    </li>
+                </ul>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">rclref_client</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#module">Module</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#module-summary">Module Summary</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#description">Description</a>
+    </li>
+    </ul>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Usage/">Usage</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rclref</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>rclref_client</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="rclref_client">rclref_client</h1>
+<h2 id="module">Module</h2>
+<p>rclref_client</p>
+<h2 id="module-summary">Module Summary</h2>
+<p>Basic functions for manipulating rclref</p>
+<h2 id="description">Description</h2>
+<p>This module provides basic funcitons for reading data from and storing data into rclref, a key-value store on riak-core-lite.</p>
+<ol>
+<li><a href="#org2a20286">put(Key, Value)</a></li>
+<li><a href="#org6c12821">put(Key, Value, Options)</a></li>
+<li><a href="#org382c11b">get(Key)</a></li>
+<li><a href="#orga550d0d">get(Key, Options)</a></li>
+<li><a href="#org0e2e4db">delete(Key)</a></li>
+<li><a href="#orgc8da9eb">delete(Key, Options)</a></li>
+<li><a href="#orge119355">reap_tombs(Key)</a></li>
+<li><a href="#orgad0f234">reap_tombs(Key, Options)</a></li>
+</ol>
+<p><a id="org2a20286"></a></p>
+<h1 id="putkey-value">put(Key, Value)</h1>
+<pre class="highlight"><code>-spec put(rclref_object:key(), rclref_object:value()) -&gt; ok | {error, timeout} | {error, partial} |  {error, term()}.
+</code></pre>
+
+<p>This is equal to <code>rclref_put(Key, Value, [])</code></p>
+<p><a id="org6c12821"></a></p>
+<h1 id="putkey-value-options">put(Key, Value, Options)</h1>
+<pre class="highlight"><code>-spec put(rclref_object:key(), rclref_object:value(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
+</code></pre>
+
+<p>store a Key-Value in N vnodes. When W vnodes respond with ok or more than N-W number of vnodes respond with an error, this function will return. If neither of these is satisified within TIMEOUT_PUT, then this function will return {error, timeout}</p>
+<ul>
+<li>Returns <code>ok</code> when W vnodes respond with ok.</li>
+<li>Returns <code>{error, partial}</code> when at least one of the vnodes (but not more than or equal to W vnodes) responds with ok before getting errors from more than N-W vnodes.</li>
+<li>Returns <code>{error, [Reason]}</code> when no vnodes respond with ok and more than N-W vnodes respond with an error.  <code>[Reason]</code> is a list that contains error reasons of N-W+1 vnodes.</li>
+<li>Returns <code>{error, timeout}</code> when neither of these above are satisfied within TIMEOUT_PUT milliseconds.</li>
+</ul>
+<p><a id="org382c11b"></a></p>
+<h1 id="getkey">get(Key)</h1>
+<pre class="highlight"><code>-spec get(rclref_object:key()) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.
+
+</code></pre>
+
+<p>This is equal to <code>get(Key, Value, Options)</code>.</p>
+<p><a id="orga550d0d"></a></p>
+<h1 id="getkey-options">get(Key, Options)</h1>
+<pre class="highlight"><code>-spec get(rclref_object:key(), [term()]) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.
+</code></pre>
+
+<p>get a Key-Value from N vnodes. When R number of vnodes respond with ok or more than N-R number of vnodes respond with an error, this fucntion will return. If neither of these is satisified with TIMEOUT_GET, then this function will return {error, timeout}</p>
+<p>On get, response from a vnode will be the either of <code>{ok, RObj}</code>,<code>{error, not_found}</code> , <code>{error, Reason}</code>  </p>
+<p><a id="orgefd1cd5"></a></p>
+<ul>
+<li>Returns <code>{ok, [Value]}</code> when R vnodes respond with a value.   <code>[Value]</code> is a list that contains values from R vnodes.</li>
+<li>Returns <code>{error, partial}</code> when at least one of the vnodes (but not more than or equal to R vnodes) responds with a value before getting errors from more than N-R vnodes.</li>
+<li>Returns <code>{error, not_found}</code> when no vnodes respond with a value and more than N-R vnodes respond with a error which are all not_found.</li>
+<li>Returns <code>{error, [Reason]}</code> when no vnodes respond with a value and more than N-R vnodes respond with a error which are not all not_found. <code>[Reason]</code> is a list that contains error reasons of N-R+1 vnodes.</li>
+<li>Returns <code>{error, timeout}</code> when neither of these above is satisified within TIMEOUT_GET milliseconds.</li>
+</ul>
+<p><a id="org0e2e4db"></a></p>
+<h1 id="deletekey">delete(Key)</h1>
+<pre class="highlight"><code>-spec delete(rclref_object:key()) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
+</code></pre>
+
+<p>This is equal to <code>delete(Key, [])</code>.</p>
+<p><a id="orgc8da9eb"></a></p>
+<h1 id="deletekey-options">delete(Key, Options)</h1>
+<pre class="highlight"><code>-spec delete(rclref_object:key(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
+</code></pre>
+
+<p>This is equal to <code>put(Key, undefined, Options)</code>.
+Note that this will not delete the Key from the backend, however <code>rclref_client:get(Key)</code> will return <code>{error, not_found}</code> after calling this function.
+The reason why this is implemeted this way is explained in the [TODO] section.
+A Key-Value with an undefined value is called a tombstone.</p>
+<p><a id="orge119355"></a></p>
+<h1 id="list_keys">list_keys()</h1>
+<pre class="highlight"><code>-spec list_keys() -&gt; {ok, [rclref_object:key()]}.
+</code></pre>
+
+<p>This is equal to <code>list_keys([])</code>.</p>
+<p><a id="orgad0f234"></a></p>
+<h1 id="list_keysoptions">list_keys(Options)</h1>
+<pre class="highlight"><code>-spec list_keys([term()]) -&gt; {ok, [rclref_object:key()]}.
+
+</code></pre>
+
+<p>list all unique keys in the backend.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../Usage/" class="btn btn-neutral float-right" title="Usage">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href=".." class="btn btn-neutral" title="Welcome to the rclref develoment site"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../Usage/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
