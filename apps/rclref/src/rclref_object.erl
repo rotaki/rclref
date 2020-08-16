@@ -12,17 +12,16 @@
          r_content :: #r_content{},
          partition :: non_neg_integer() | undefined,
          node :: node() | undefined}).
--record(r_error,
+-record(vnode_error,
         {reason :: term(),
          partition :: non_neg_integer() | undefined,
          node :: node() | undefined}).
 
 -opaque riak_object() :: #r_object{}.
--opaque vnode_error() :: #r_error{}.
+-opaque vnode_error() :: #vnode_error{}.
 
 -export([key/1, content/1, partition/1, node/1, value/1, vclock/1, error_reason/1,
-         increment_vclock/2, new_vclock/0, merge/1, new/2, new/4, new_content/2, new_error/3,
-         is_robj/1, is_error/1]).
+         increment_vclock/2, new_vclock/0, merge/1, new/2, new/4, new_content/2, new_error/3]).
 
 -spec key(riak_object()) -> key().
 key(#r_object{key = Key}) ->
@@ -53,7 +52,7 @@ vclock(#r_content{vclock = VClock}) ->
     VClock.
 
 -spec error_reason(vnode_error()) -> term().
-error_reason(#r_error{reason = Reason}) ->
+error_reason(#vnode_error{reason = Reason}) ->
     Reason.
 
 -spec new_vclock() -> vclock().
@@ -75,7 +74,7 @@ new_content(Value, VClock) ->
 
 -spec new_error(term(), non_neg_integer(), node()) -> vnode_error().
 new_error(Reason, Partition, Node) ->
-    #r_error{reason = Reason, partition = Partition, node = Node}.
+    #vnode_error{reason = Reason, partition = Partition, node = Node}.
 
 -spec new(key(), value()) -> riak_object().
 new(Key, Value) ->
@@ -99,13 +98,3 @@ merge([RObj0, RObj1 | RObjs]) ->
               RObj0
         end,
     merge([NewRObj] ++ RObjs).
-
-is_robj(#r_object{}) ->
-    true;
-is_robj(_) ->
-    false.
-
-is_error(#r_error{}) ->
-    true;
-is_error(_) ->
-    false.

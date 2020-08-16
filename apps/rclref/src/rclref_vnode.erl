@@ -20,7 +20,6 @@ start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 init([Partition]) ->
-    %TODO: Get model from config
     Mod =
         case rclref_config:storage_backend() of
           ets ->
@@ -43,11 +42,18 @@ handle_command({kv_put_request, RObj, Pid, Node},
                State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Key = rclref_object:key(RObj),
     Value = rclref_object:value(RObj),
+
+    % get will be issued before put
+    % If a key is new to backend, store it with a new vector clock
+    % If a key is not new to backend, store it with an updated vector clock
+    % If get returns an error, put will be ignored
     case Mod:get(Key, ModState0) of
       {ok, not_found, ModState1} ->
+          % Create content with a new vector clock
           VClock = rclref_object:new_vclock(),
           NewVClock = rclref_object:increment_vclock(Node, VClock),
           NewContent = rclref_object:new_content(Value, NewVClock),
+
           case Mod:put(Key, NewContent, ModState1) of
             {ok, ModState2} ->
                 NewRObj = rclref_object:new(Key, NewContent, Partition, node()),
@@ -64,9 +70,11 @@ handle_command({kv_put_request, RObj, Pid, Node},
                 {noreply, State1}
           end;
       {ok, Content, ModState1} ->
+          % Create content with an updated vector clock
           VClock = rclref_object:vclock(Content),
           NewVClock = rclref_object:increment_vclock(Node, VClock),
           NewContent = rclref_object:new_content(Value, NewVClock),
+
           case Mod:put(Key, NewContent, ModState1) of
             {ok, ModState2} ->
                 NewRObj = rclref_object:new(Key, NewContent, Partition, node()),
@@ -82,28 +90,14 @@ handle_command({kv_put_request, RObj, Pid, Node},
                 State1 = State0#state{modstate = ModState2},
                 {noreply, State1}
           end;
-      {error, Reason1, ModState1} ->
+      {error, Reason, ModState1} ->
           logger:error("Failed to get kv (before put) with key: ~p for partition: ~p, "
                        "error: ~p",
-                       [Key, Partition, Reason1]),
-          VClock = rclref_object:new_vclock(),
-          NewVClock = rclref_object:increment_vclock(Node, VClock),
-          NewContent = rclref_object:new_content(Value, NewVClock),
-          case Mod:put(Key, NewContent, ModState1) of
-            {ok, ModState2} ->
-                NewRObj = rclref_object:new(Key, NewContent, Partition, node()),
-                rclref_put_statem:result_of_put(Pid, {ok, NewRObj}),
-                State1 = State0#state{modstate = ModState2},
-                {noreply, State1};
-            {error, Reason2, ModState2} ->
-                logger:error("Failed to put kv with key: ~p, content: ~p for partition: ~p, "
-                             "error: ~p",
-                             [Key, NewContent, Partition, Reason2]),
-                VnodeError = rclref_object:new_error(Reason2, Partition, node()),
-                rclref_put_statem:result_of_put(Pid, {error, VnodeError}),
-                State1 = State0#state{modstate = ModState2},
-                {noreply, State1}
-          end
+                       [Key, Partition, Reason]),
+          VnodeError = rclref_object:new_error(Reason, Partition, node()),
+          rclref_put_statem:result_of_put(Pid, {error, VnodeError}),
+          State1 = State0#state{modstate = ModState1},
+          {noreply, State1}
     end;
 handle_command({kv_get_request, Key, Pid},
                _Sender,
@@ -132,6 +126,7 @@ handle_command({repair_request, RObj},
                State0 = #state{partition = Partition, mod = Mod, modstate = ModState0}) ->
     Key = rclref_object:key(RObj),
     Content = rclref_object:content(RObj),
+
     case Mod:put(Key, Content, ModState0) of
       {ok, ModState1} ->
           State1 = State0#state{modstate = ModState1},

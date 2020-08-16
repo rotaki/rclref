@@ -77,7 +77,7 @@ devrel-start:
 	for d in $(BASEDIR)/_build/dev*; do $$d/rel/rclref/bin/$(APPNAME) start; done
 
 devrel-join:
-	for d in $(BASEDIR)/_build/dev{2,3}; do $$d/rel/rclref/bin/$(APPNAME) eval 'riak_core:join("rclref1@127.0.0.1")'; done
+	for d in $(BASEDIR)/_build/dev{2,3}; do $$d/rel/rclref/bin/$(APPNAME) eval 'riak_core:join("rclref1@127.0.0.1").'; done
 
 dev1-leave:
 	$(BASEDIR)/_build/dev1/rel/rclref/bin/$(APPNAME) eval 'riak_core:leave()'
@@ -89,7 +89,7 @@ dev3-leave:
 	$(BASEDIR)/_build/dev3/rel/rclref/bin/$(APPNAME) eval 'riak_core:leave()'
 
 devrel-cluster-plan:
-	$(BASEDIR)/_build/dev1/rel/rclref/bin/$(APPNAME) eval 'riak_core_claimant:plan()'
+	$(BASEDIR)/_build/dev1/rel/rclref/bin/$(APPNAME) eval 'riak_core_claimant:plan().'
 
 devrel-cluster-commit:
 	$(BASEDIR)/_build/dev1/rel/rclref/bin/$(APPNAME) eval 'riak_core_claimant:commit()'
