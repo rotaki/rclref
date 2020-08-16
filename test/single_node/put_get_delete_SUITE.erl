@@ -21,6 +21,7 @@ end_per_suite(Config) ->
     node_utils:kill_nodes(Nodes),
     Config.                                           
 
+% rclref:get, rclref:put, rclref:delete, rclref:reap_tombs
 put_get_delete_test(Config) ->
     [Node] = ?config(nodes, Config),
     Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(20, 40)],
@@ -29,7 +30,7 @@ put_get_delete_test(Config) ->
     
     % confirm not_found
     lists:foreach(fun (Key) ->
-                          {error, VnodeErrors} = rpc:call(Node, rclref, get, [Key]),
+                          {{ok, []}, {error, VnodeErrors}} = rpc:call(Node, rclref, get, [Key]),
                           true = lists:all(fun(VnodeError) ->
                                                    not_found =:= rclref_object:error_reason(VnodeError)
                                            end, VnodeErrors)
@@ -90,7 +91,7 @@ put_get_delete_test(Config) ->
 
     % confirm deleted
     lists:foreach(fun (Key) ->
-                          {error, VnodeErrors} = rpc:call(Node, rclref, get, [Key]),
+                          {{ok, []}, {error, VnodeErrors}} = rpc:call(Node, rclref, get, [Key]),
                           true = lists:all(fun(VnodeError) ->
                                                    not_found =:= rclref_object:error_reason(VnodeError)
                                            end, VnodeErrors)

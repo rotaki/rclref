@@ -23,7 +23,7 @@ end_per_suite(Config) ->
     node_utils:kill_nodes(Nodes),
     Config.
 
-% rclref:list_unique_keys, rclref:list_all_keys, rclref:list_all_objects
+% rclref:list_unique_keys, rclref:list_all_keys, rclref:list_unique_objects, rclref:list_all_objects
 coverage_call_test(Config) ->
     [Node] = ?config(nodes, Config),
     Keys = ["key--" ++ integer_to_list(Num) || Num <- lists:seq(21, 40)],
@@ -49,6 +49,13 @@ coverage_call_test(Config) ->
                           ?N =:= count_keys(Key, GotAllKeys)
                   end,
                   Keys),
+
+    % check listing of unique RObjs
+    {ok, GotUniqueRObjs} = rpc:call(Node, rclref, list_unique_objects, []),
+    lists:foreach(fun (RObj) ->
+                          count_objects(RObj, GotUniqueRObjs) >= 1
+                  end,
+                  RObjs),
 
     % check listing of all RObjs
     {ok, GotAllRObjs} = rpc:call(Node, rclref, list_all_objects, []),

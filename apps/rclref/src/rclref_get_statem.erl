@@ -106,7 +106,7 @@ waiting(cast,
     % When more than (?N-?R) vnodes responded with {error, VnodeError}, return all RObjs and VNodeErrors it has received to client
     case NumVnodeError > ?N - ?R of
       true ->
-          ClientPid ! {ReqId, {error, RObjs0 ++ VnodeErrors}},
+          ClientPid ! {ReqId, {{ok, RObjs0}, {error, VnodeErrors}}},
           {next_state, finalize, NewState, [{state_timeout, ?TIMEOUT_REPAIR, hard_stop}]};
       _ ->
           {keep_state, NewState}
@@ -181,7 +181,7 @@ finalize(_EventType, _EventContent, State = #state{}) ->
 repair(RObj, RObjs) ->
     Key = rclref_object:key(RObj),
     Content = rclref_object:content(RObj),
-    % Exclude vnodes that has the same content
+    % Exclude repairing of vnodes that has the same content
     OkNodesIndexes =
         [{rclref_object:partition(X), rclref_object:node(X)}
          || X <- RObjs, Key =:= rclref_object:key(X), Content =:= rclref_object:content(X)],

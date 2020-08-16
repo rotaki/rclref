@@ -16,14 +16,11 @@ put(Key, Value, Options) when is_list(Options) ->
           ok;
       {error, timeout} ->
           {error, timeout};
-      {error, Items} ->
-          case contain_robj(Items) of
-            true ->
-                {error, partial};
-            _ ->
-                Reasons = [rclref_object:error_reason(Item) || Item <- Items],
-                {error, Reasons}
-          end
+      {{ok, []}, {error, VnodeErrors}} ->
+          Reasons = [rclref_object:error_reason(VnodeError) || VnodeError <- VnodeErrors],
+          {error, Reasons};
+      {{ok, _RObjs}, {error, _VnodeErrors}} ->
+          {error, partial}
     end.
 
 -spec get(rclref_object:key()) ->
@@ -44,6 +41,7 @@ get(Key) ->
 get(Key, Options) when is_list(Options) ->
     case rclref:get(Key, Options) of
       {ok, RObjs} ->
+          % If all the values are undefined, return not_found. Otherwise return all the values except from undefined
           case lists:all(fun (RObj) ->
                                  undefined =:= rclref_object:value(RObj)
                          end,
@@ -58,23 +56,21 @@ get(Key, Options) when is_list(Options) ->
           end;
       {error, timeout} ->
           {error, timeout};
-      {error, Items} ->
-          case contain_robj(Items) of
+      {{ok, []}, {error, VnodeErrors}} ->
+          % If all the errors are not_found, return not_found. Otherwise return all errors.
+          Reasons = [rclref_object:error_reason(VnodeError) || VnodeError <- VnodeErrors],
+          case lists:all(fun (Reason) ->
+                                 Reason =:= not_found
+                         end,
+                         Reasons)
+              of
             true ->
-                {error, partial};
+                {error, not_found};
             _ ->
-                Reasons = [rclref_object:error_reason(Item) || Item <- Items],
-                case lists:all(fun (Reason) ->
-                                       Reason =:= not_found
-                               end,
-                               Reasons)
-                    of
-                  true ->
-                      {error, not_found};
-                  _ ->
-                      {error, Reasons}
-                end
-          end
+                {error, Reasons}
+          end;
+      {{ok, _RObjs}, {error, _VnodeErrors}} ->
+          {error, partial}
     end.
 
 -spec delete(rclref_object:key()) ->
@@ -97,15 +93,3 @@ list_keys(Options) when is_list(Options) ->
     Keys =
         [rclref_object:key(RObj) || RObj <- RObjs, undefined =/= rclref_object:value(RObj)],
     {ok, lists:usort(Keys)}.
-
--spec contain_robj([rclref_object:riak_object() | rclref_object:vnode_error()]) ->
-                      boolean().
-contain_robj([Item | Items]) ->
-    case rclref_object:is_robj(Item) of
-      true ->
-          true;
-      false ->
-          contain_robj(Items)
-    end;
-contain_robj([]) ->
-    false.
