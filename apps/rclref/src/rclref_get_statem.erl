@@ -50,9 +50,6 @@ init([ReqId, ClientPid, ClientNode, Key, Options]) ->
     N = proplists:get_value(n_val, Options, ?N),
     R = proplists:get_value(r_val, Options, ?R),
 
-    logger:error("N ~p", [N]),
-    logger:error("R ~p", [R]),
-
     PrefList = riak_core_apl:get_primary_apl(DocIdx, N, rclref),
 
     State =
