@@ -71,15 +71,12 @@ put_get_delete_test(Config) ->
                   end,
                   Keys),
 
-    % confirm undefined values
+    % confirm not_found
     lists:foreach(fun(Key) ->
-                          {ok, GotRObjs} = rpc:call(Node, rclref, get, [Key]),
-                          RObj = rclref_object:new(Key, undefined),
-                          true =
-                              lists:all(fun(GotRObj) ->
-                                                 have_same_keyvalue(RObj, GotRObj)
-                                         end,
-                                        GotRObjs)
+                          {{ok, []}, {error, VnodeErrors}} = rpc:call(Node, rclref, get, [Key]),
+                          true = lists:all(fun(VnodeError) ->
+                                                   not_found =:= rclref_object:error_reason(VnodeError)
+                                           end, VnodeErrors)
                   end,
                   Keys),
 
@@ -97,6 +94,10 @@ put_get_delete_test(Config) ->
                                            end, VnodeErrors)
                   end,
                   Keys),
+    
+    % confirm no tombstones
+    {ok, []} = rpc:call(Node, rclref, list_all_objects, []),
+
     ok.
 
 % private

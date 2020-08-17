@@ -17,6 +17,8 @@
          client_pid :: pid(),
          client_node :: node(),
          preflist :: [term()],
+         n_val :: non_neg_integer(),
+         w_val :: non_neg_integer(),
          num_ok = 0 :: non_neg_integer(),
          num_vnode_error = 0 :: non_neg_integer(),
          vnode_errors = [] :: [rclref_object:vnode_error()],
@@ -43,13 +45,24 @@ init([ReqId, ClientPid, ClientNode, RObj, Options]) ->
     logger:info("Initializing PutStatem, Pid:~p", [self()]),
     Key = rclref_object:key(RObj),
     DocIdx = riak_core_util:chash_key({Key, undefined}),
-    TimeoutPut = proplists:get_value(timeout_put, Options, ?TIMEOUT_PUT),
-    PrefList = riak_core_apl:get_primary_apl(DocIdx, ?N, rclref),
+
+    TimeoutPut = proplists:get_value(timeout, Options, ?TIMEOUT_PUT),
+    N = proplists:get_value(n_val, Options, ?N),
+    W = proplists:get_value(w_val, Options, ?W),
+
+    logger:error("N ~p", [N]),
+    logger:error("W ~p", [W]),
+
+    PrefList = riak_core_apl:get_primary_apl(DocIdx, N, rclref),
+
     State =
         #state{req_id = ReqId,
                client_pid = ClientPid,
                client_node = ClientNode,
-               preflist = PrefList},
+               preflist = PrefList,
+               n_val = N,
+               w_val = W},
+
     lists:foreach(fun ({IndexNode, _}) ->
                           riak_core_vnode_master:command(IndexNode,
                                                          {kv_put_request, RObj, self(), node()},
@@ -76,6 +89,7 @@ waiting(cast,
         State =
             #state{req_id = ReqId,
                    client_pid = ClientPid,
+                   w_val = W,
                    num_ok = NumOk0,
                    riak_objects = RObjs0}) ->
     % Update State
@@ -83,8 +97,8 @@ waiting(cast,
     NumOk = NumOk0 + 1,
     NewState = State#state{num_ok = NumOk, riak_objects = RObjs},
 
-    % When more than or equal to ?W vnodes responded with {ok, RObj}, return ?W RObjs to client
-    case NumOk >= ?W of
+    % When more than or equal to W vnodes responded with {ok, RObj}, return W RObjs to client
+    case NumOk >= W of
       true ->
           ClientPid ! {ReqId, {ok, RObjs}},
           {stop, normal, NewState};
@@ -97,6 +111,8 @@ waiting(cast,
         State =
             #state{req_id = ReqId,
                    client_pid = ClientPid,
+                   n_val = N,
+                   w_val = W,
                    num_vnode_error = NumVnodeError0,
                    vnode_errors = VnodeErrors0,
                    riak_objects = RObjs0}) ->
@@ -105,8 +121,8 @@ waiting(cast,
     VnodeErrors = [VnodeError] ++ VnodeErrors0,
     NewState = State#state{num_vnode_error = NumVnodeError, vnode_errors = VnodeErrors},
 
-    % When more than (?N-?R) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client
-    case NumVnodeError > ?N - ?W of
+    % When more than (N-R) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client
+    case NumVnodeError > N - W of
       true ->
           ClientPid ! {ReqId, {{ok, RObjs0}, {error, VnodeErrors}}},
           {stop, normal, NewState};

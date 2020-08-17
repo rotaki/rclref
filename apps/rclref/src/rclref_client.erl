@@ -11,7 +11,7 @@ put(Key, Value) ->
              ok | {error, timeout} | {error, partial} | {error, [term()]}.
 put(Key, Value, Options) when is_list(Options) ->
     RObj = rclref_object:new(Key, Value),
-    case rclref:put(RObj) of
+    case rclref:put(RObj, Options) of
       {ok, _} ->
           ok;
       {error, timeout} ->
@@ -41,19 +41,7 @@ get(Key) ->
 get(Key, Options) when is_list(Options) ->
     case rclref:get(Key, Options) of
       {ok, RObjs} ->
-          % If all the values are undefined, return not_found. Otherwise return all the values except from undefined
-          case lists:all(fun (RObj) ->
-                                 undefined =:= rclref_object:value(RObj)
-                         end,
-                         RObjs)
-              of
-            true ->
-                {error, not_found};
-            _ ->
-                {ok,
-                 [rclref_object:value(RObj)
-                  || RObj <- RObjs, undefined =/= rclref_object:value(RObj)]}
-          end;
+          {ok, [rclref_object:value(RObj) || RObj <- RObjs]};
       {error, timeout} ->
           {error, timeout};
       {{ok, []}, {error, VnodeErrors}} ->
