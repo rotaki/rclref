@@ -34,9 +34,8 @@ compile:
 clean:
 	$(REBAR) clean
 
-ct: format dialyzer
-	$(REBAR) ct --name test@127.0.0.1
-
+ct: 
+	$(REBAR) ct --sname test
 
 devrel1:
 	$(REBAR) as dev1 release
