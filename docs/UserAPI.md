@@ -20,8 +20,8 @@ This module provides basic funcitons for reading data from and storing data into
 4.  [get(Key, Options)](#orga550d0d)
 5.  [delete(Key)](#org0e2e4db)
 6.  [delete(Key, Options)](#orgc8da9eb)
-7.  [reap_tombs(Key)](#orge119355)
-8.  [reap_tombs(Key, Options)](#orgad0f234)
+7.  [list_keys()](#orge119355)
+8.  [list_keys(Options)](#orgad0f234)
 
 
 <a id="org2a20286"></a>

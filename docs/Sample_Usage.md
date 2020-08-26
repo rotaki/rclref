@@ -2,30 +2,43 @@
 
 ## Erlang interface
 
+Get a Key-Value with key = dog
+
 ```erlang
 (rclref@127.0.0.1)1> rclref_client:get(<<"dog">>).
 {error,not_found}
 ```
+
+Store a Key-Value with key = dog, value = cat
+
 
 ```erl
 (rclref@127.0.0.1)2> rclref_client:put(<<"dog">>, <<"cat">>).
 ok
 ```
 
+Get a Key-Value with key = dog
+
 ```erl
 (rclref@127.0.0.1)7> rclref_client:get(<<"dog">>).
 {ok,[<<"cat">>,<<"cat">>,<<"cat">>]}
 ```
+
+List all keys
 
 ```erl
 (rclref@127.0.0.1)2> rclref_client:list_keys().
 {ok,[<<"dog">>]}
 ```
 
+Delete a Key-Value with key = dog. (Internally, this will not delete the value but leave it as a tombstone)
+
 ```erl
 (rclref@127.0.0.1)8> rclref_client:delete(<<"dog">>).
 ok
 ```
+
+Get a Key-Value with key = dog. Note that tombstones are not observable.
 
 ```erl
 (rclref@127.0.0.1)8> rclref_client:get(<<"dog">>).

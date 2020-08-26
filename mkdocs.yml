@@ -1,6 +1,27 @@
 site_name: rclref
 theme: readthedocs
 markdown_extensions:
-    - pymdownx.highlight:
-        use_pygments: true
-        linenums: true
+  - meta
+  - pymdownx.mark
+  - pymdownx.magiclink
+  - pymdownx.emoji
+  - fontawesome_markdown
+  - pymdownx.keys
+  - def_list
+  - admonition
+  - codehilite:
+      linenums: true
+      use_pygments: true
+  - plantuml_markdown:
+      server: http://www.plantuml.com/plantuml
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format
+          
+extra_css:
+  - https://unpkg.com/mermaid@8.0.0/dist/mermaid.css
+
+extra_javascript:
+  - https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js
