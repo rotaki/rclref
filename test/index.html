@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>How to test distributed application in Erlang? - rclref</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link href="https://unpkg.com/mermaid@8.0.0/dist/mermaid.css" rel="stylesheet" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "How to test distributed application in Erlang?";
+    var mkdocs_page_input_path = "test.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rclref</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Sample_Usage/">Usage</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../UserAPI/">rclref_client</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">put, get, delete</a>
+                    </li>
+                </ul>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">How to test distributed application in Erlang?</a>
+    <ul class="current">
+    </ul>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rclref</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>How to test distributed application in Erlang?</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="how-to-test-distributed-application-in-erlang">How to test distributed application in Erlang?</h1>
+<p>In rclref, Common Test (CT) is used for integrated testing.
+This post explains how to use CT for distributed applications assuming that the reader already knows how to use CT in a single node environment. The issue in testing distributed application in Erlang often relies on how to spawn multiple Erlang nodes from CT and how to manage their logs. The Goal of this post is to be able to test distirbuted Erlang application using <code>rebar3</code> and understand how to organize the logs of several distributed nodes.</p>
+<p>The following is a snippet from <a href="https://github.com/wattlebirdaz/rclref/blob/master/test/single_node/client_SUITE.erl">client_SUITE.erl</a> in rclref repository.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">init_per_suite</span><span class="p">(</span><span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">application</span><span class="p">:</span><span class="nf">ensure_all_started</span><span class="p">(</span><span class="n">rclref</span><span class="p">),</span>
+    <span class="nv">Names</span> <span class="o">=</span> <span class="p">[</span><span class="n">node1</span><span class="p">],</span>
+    <span class="nv">Ports</span> <span class="o">=</span> <span class="p">[</span><span class="mi">30400</span><span class="p">],</span>
+    <span class="nv">Nodes</span> <span class="o">=</span> <span class="nn">node_utils</span><span class="p">:</span><span class="nf">set_up_nodes</span><span class="p">(</span><span class="nv">Names</span><span class="p">,</span> <span class="nv">Ports</span><span class="p">,</span> <span class="p">[{</span><span class="n">module</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">}]),</span>
+    <span class="p">[{</span><span class="n">module</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">},</span> <span class="p">{</span><span class="n">names</span><span class="p">,</span> <span class="nv">Names</span><span class="p">},</span> <span class="p">{</span><span class="nb">nodes</span><span class="p">,</span> <span class="nv">Nodes</span><span class="p">},</span> <span class="p">{</span><span class="n">ports</span><span class="p">,</span> <span class="nv">Ports</span><span class="p">}</span> <span class="p">|</span> <span class="nv">Config</span><span class="p">].</span>
+
+<span class="nf">end_per_suite</span><span class="p">(</span><span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">Nodes</span> <span class="o">=</span> <span class="o">?</span><span class="n">config</span><span class="p">(</span><span class="nb">nodes</span><span class="p">,</span> <span class="nv">Config</span><span class="p">),</span>
+    <span class="nn">node_utils</span><span class="p">:</span><span class="nf">kill_nodes</span><span class="p">(</span><span class="nv">Nodes</span><span class="p">),</span>
+    <span class="nv">Config</span><span class="p">.</span>
+
+<span class="nf">put_get_delete_test</span><span class="p">(</span><span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">[</span><span class="nv">Node</span><span class="p">]</span> <span class="o">=</span> <span class="o">?</span><span class="n">config</span><span class="p">(</span><span class="nb">nodes</span><span class="p">,</span> <span class="nv">Config</span><span class="p">),</span>
+    <span class="nv">Keys</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;key--&quot;</span> <span class="o">++</span> <span class="nb">integer_to_list</span><span class="p">(</span><span class="nv">Num</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Num</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">)],</span>
+    <span class="nv">Values</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;value--&quot;</span> <span class="o">++</span> <span class="nb">integer_to_list</span><span class="p">(</span><span class="nv">Num</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Num</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">)],</span>
+    <span class="c">% check not_found</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">Key</span><span class="p">)</span> <span class="o">-&gt;</span>
+                          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">not_found</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">rclref_client</span><span class="p">,</span> <span class="nb">get</span><span class="p">,</span> <span class="p">[</span><span class="nv">Key</span><span class="p">])</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nv">Keys</span><span class="p">),</span>
+    <span class="c">% put values</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span><span class="p">({</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">})</span> <span class="o">-&gt;</span>
+                          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">rclref_client</span><span class="p">,</span> <span class="nb">put</span><span class="p">,</span> <span class="p">[</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">])</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nn">lists</span><span class="p">:</span><span class="nf">zip</span><span class="p">(</span><span class="nv">Keys</span><span class="p">,</span> <span class="nv">Values</span><span class="p">)),</span>
+    <span class="c">% confirm values</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span><span class="p">({</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">})</span> <span class="o">-&gt;</span>
+                          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">GotValues</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">rclref_client</span><span class="p">,</span> <span class="nb">get</span><span class="p">,</span> <span class="p">[</span><span class="nv">Key</span><span class="p">]),</span>
+                          <span class="n">true</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">all</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">GotValue</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nv">Value</span> <span class="o">=:=</span> <span class="nv">GotValue</span> <span class="k">end</span><span class="p">,</span> <span class="nv">GotValues</span><span class="p">)</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nn">lists</span><span class="p">:</span><span class="nf">zip</span><span class="p">(</span><span class="nv">Keys</span><span class="p">,</span> <span class="nv">Values</span><span class="p">)),</span>
+    <span class="c">% delete values</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">Key</span><span class="p">)</span> <span class="o">-&gt;</span>
+                          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">rclref_client</span><span class="p">,</span> <span class="n">delete</span><span class="p">,</span> <span class="p">[</span><span class="nv">Key</span><span class="p">])</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nv">Keys</span><span class="p">),</span>
+
+    <span class="c">% check not_found</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">Key</span><span class="p">)</span> <span class="o">-&gt;</span>
+                          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">not_found</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">rclref_client</span><span class="p">,</span> <span class="nb">get</span><span class="p">,</span> <span class="p">[</span><span class="nv">Key</span><span class="p">])</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nv">Keys</span><span class="p">),</span>
+    <span class="n">ok</span><span class="p">.</span>
+</code></pre></div>
+
+<p>The <code>init_per_suite/1</code> will start an applicaiotn with nodename "node1" on port 30400 by calling <code>node_utils:set_upnodes(Names, Ports, [{module, ?MODULE}])</code>. Internally, the node_util module basically spawns a slave node with <code>ct_slave:start/2</code> and configures environmental variales. CT will automatically call <code>put_get_delete_test/1</code> after <code>init_per_suite/1</code> is called.
+<code>put_get_delete_test/1</code> is a basic test storing and deleteing 20 key-values to the slave node that has just been staretd by <code>init_per_suite/1</code>. Note that in order to access the remote node, remote procedure call should be used. For example, putting a key-value in the slave node is done by <code>ok = rpc:call(Node, rclref_client, put, [Key, Value])</code>.</p>
+<p>Now let's see the <a href="https://github.com/wattlebirdaz/rclref/blob/master/test/utils/node_utils.erl">node_utls module</a>  in more detail.</p>
+<p><div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">spec</span> <span class="n">set_up_nodes</span><span class="p">([</span><span class="n">atom</span><span class="p">()],</span> <span class="p">[</span><span class="n">non_neg_integer</span><span class="p">()],</span> <span class="p">[</span><span class="n">tuple</span><span class="p">()])</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="nb">node</span><span class="p">()].</span>
+<span class="nf">set_up_nodes</span><span class="p">(</span><span class="nv">Names</span><span class="p">,</span> <span class="nv">Ports</span><span class="p">,</span> <span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">NodesWithStatus</span> <span class="o">=</span>
+        <span class="nn">node_utils</span><span class="p">:</span><span class="nf">pmap</span><span class="p">(</span><span class="k">fun</span> <span class="p">({</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Port</span><span class="p">})</span> <span class="o">-&gt;</span>
+                                <span class="nn">node_utils</span><span class="p">:</span><span class="nf">start_node</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Port</span><span class="p">,</span> <span class="nv">Config</span><span class="p">)</span>
+                        <span class="k">end</span><span class="p">,</span>
+                        <span class="nn">lists</span><span class="p">:</span><span class="nf">zip</span><span class="p">(</span><span class="nv">Names</span><span class="p">,</span> <span class="nv">Ports</span><span class="p">)),</span>
+    <span class="nv">Nodes</span> <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="p">{</span><span class="n">connect</span><span class="p">,</span> <span class="nv">Node</span><span class="p">}</span> <span class="o">&lt;-</span> <span class="nv">NodesWithStatus</span><span class="p">],</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="nn">riak_utils</span><span class="p">:</span><span class="nf">wait_until_ring_converged</span><span class="p">(</span><span class="nv">Nodes</span><span class="p">),</span>
+    <span class="nv">Nodes</span><span class="p">.</span>
+</code></pre></div>
+As shown in the snippet above, a node is spawned by <code>node_utls:start_node(Name, Port, Config)</code>.
+The function <code>node_utils:pmap</code> is an asynchronous map fuction which is used to start multiple slave nodes asynchronously.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">spec</span> <span class="n">start_node</span><span class="p">(</span><span class="n">atom</span><span class="p">(),</span> <span class="n">non_neg_integer</span><span class="p">(),</span> <span class="p">[</span><span class="n">tuple</span><span class="p">()])</span> <span class="o">-&gt;</span>
+                    <span class="p">{</span><span class="n">connect</span><span class="p">,</span> <span class="nb">node</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">ready</span><span class="p">,</span> <span class="nb">node</span><span class="p">()}.</span>
+<span class="nf">start_node</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Port</span><span class="p">,</span> <span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">ct</span><span class="p">:</span><span class="nf">log</span><span class="p">(</span><span class="s">&quot;Starting node </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Name</span><span class="p">]),</span>
+    <span class="nv">CodePath</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">filter</span><span class="p">(</span><span class="k">fun</span> <span class="nn">filelib</span><span class="p">:</span><span class="n">is_dir</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="nn">code</span><span class="p">:</span><span class="nf">get_path</span><span class="p">()),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Cwd</span><span class="p">}</span> <span class="o">=</span> <span class="nn">file</span><span class="p">:</span><span class="nf">get_cwd</span><span class="p">(),</span>
+    <span class="c">% RclrefFolder is .../rclref/_build/test</span>
+    <span class="p">_</span><span class="nv">RclrefFolder</span> <span class="o">=</span> <span class="nn">filename</span><span class="p">:</span><span class="nf">dirname</span><span class="p">(</span><span class="nn">filename</span><span class="p">:</span><span class="nf">dirname</span><span class="p">(</span><span class="nv">Cwd</span><span class="p">)),</span>
+    <span class="nv">NodeConfig</span> <span class="o">=</span>
+        <span class="p">[{</span><span class="n">init_timeout</span><span class="p">,</span> <span class="mi">3000</span><span class="p">},</span>
+         <span class="p">{</span><span class="n">startup_timeout</span><span class="p">,</span> <span class="mi">3000</span><span class="p">},</span>
+         <span class="p">{</span><span class="n">monitor_master</span><span class="p">,</span> <span class="n">true</span><span class="p">},</span>
+         <span class="p">{</span><span class="n">startup_functions</span><span class="p">,</span> <span class="p">[{</span><span class="n">code</span><span class="p">,</span> <span class="n">set_path</span><span class="p">,</span> <span class="p">[</span><span class="nv">CodePath</span><span class="p">]}]}],</span>
+
+    <span class="k">case</span> <span class="nn">ct_slave</span><span class="p">:</span><span class="nf">start</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">NodeConfig</span><span class="p">)</span> <span class="k">of</span>
+      <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Node</span><span class="p">}</span> <span class="o">-&gt;</span>
+          <span class="c">% Load application to allow configuring the environment before starting</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">load</span><span class="p">,</span> <span class="p">[</span><span class="n">riak_core</span><span class="p">]),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">load</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">]),</span>
+          <span class="c">% Get remote working dir of node</span>
+          <span class="c">% NodeWorkingDir is .../rclref/_build/test/logs/ct_run.test@127.0.0.1.2020-00-00_00.00.00</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">NodeWorkingDir</span><span class="p">}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">get_cwd</span><span class="p">,</span> <span class="p">[]),</span>
+          <span class="nv">SuiteName</span> <span class="o">=</span> <span class="nn">proplists</span><span class="p">:</span><span class="nf">get_value</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="nv">Config</span><span class="p">,</span> <span class="err">&#39;&#39;</span><span class="p">),</span>
+          <span class="c">% Data Dirs</span>
+          <span class="n">ok</span> <span class="o">=</span>
+              <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span>
+                       <span class="n">application</span><span class="p">,</span>
+                       <span class="n">set_env</span><span class="p">,</span>
+                       <span class="p">[</span><span class="n">riak_core</span><span class="p">,</span>
+                        <span class="n">ring_state_dir</span><span class="p">,</span>
+                        <span class="nn">filename</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nv">NodeWorkingDir</span><span class="p">,</span> <span class="s">&quot;suites&quot;</span><span class="p">,</span> <span class="nv">SuiteName</span><span class="p">,</span> <span class="nv">Node</span><span class="p">,</span> <span class="s">&quot;data/ring&quot;</span><span class="p">])]),</span>
+          <span class="n">ok</span> <span class="o">=</span>
+              <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span>
+                       <span class="n">application</span><span class="p">,</span>
+                       <span class="n">set_env</span><span class="p">,</span>
+                       <span class="p">[</span><span class="n">riak_core</span><span class="p">,</span>
+                        <span class="n">platform_data_dir</span><span class="p">,</span>
+                        <span class="nn">filename</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nv">NodeWorkingDir</span><span class="p">,</span> <span class="s">&quot;suites&quot;</span><span class="p">,</span> <span class="nv">SuiteName</span><span class="p">,</span> <span class="nv">Node</span><span class="p">,</span> <span class="s">&quot;data&quot;</span><span class="p">])]),</span>
+          <span class="n">ok</span> <span class="o">=</span>
+              <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span>
+                       <span class="n">application</span><span class="p">,</span>
+                       <span class="n">set_env</span><span class="p">,</span>
+                       <span class="p">[</span><span class="n">riak_core</span><span class="p">,</span>
+                        <span class="n">schema_dirs</span><span class="p">,</span>
+                        <span class="nn">filename</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nv">NodeWorkingDir</span><span class="p">,</span> <span class="s">&quot;suites&quot;</span><span class="p">,</span> <span class="nv">SuiteName</span><span class="p">,</span> <span class="nv">Node</span><span class="p">,</span> <span class="s">&quot;data&quot;</span><span class="p">])]),</span>
+
+          <span class="c">% Set ports</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">riak_core</span><span class="p">,</span> <span class="n">handoff_port</span><span class="p">,</span> <span class="nv">Port</span><span class="p">]),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">,</span> <span class="n">http_port</span><span class="p">,</span> <span class="nv">Port</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]),</span>
+
+          <span class="c">% Logging Configuration</span>
+          <span class="nv">LogRoot</span> <span class="o">=</span> <span class="nn">filename</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nv">NodeWorkingDir</span><span class="p">,</span> <span class="s">&quot;suites&quot;</span><span class="p">,</span> <span class="nv">SuiteName</span><span class="p">,</span> <span class="nv">Node</span><span class="p">,</span> <span class="s">&quot;logs&quot;</span><span class="p">]),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">log_config</span><span class="p">(</span><span class="nv">LogRoot</span><span class="p">)]),</span>
+          <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">set_primary_config</span><span class="p">,</span> <span class="p">[</span><span class="n">level</span><span class="p">,</span> <span class="n">all</span><span class="p">]),</span>
+          <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">add_handlers</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">]),</span>
+          <span class="c">% redirect slave logs to ct_master logs</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">,</span> <span class="n">ct_master</span><span class="p">,</span> <span class="nb">node</span><span class="p">()]),</span>
+          <span class="nv">ConfLog</span> <span class="o">=</span>
+              <span class="p">#{</span><span class="n">level</span> <span class="o">=&gt;</span> <span class="n">debug</span><span class="p">,</span>
+                <span class="n">formatter</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="n">logger_formatter</span><span class="p">,</span> <span class="p">#{</span><span class="n">single_line</span> <span class="o">=&gt;</span> <span class="n">true</span><span class="p">,</span> <span class="n">max_size</span> <span class="o">=&gt;</span> <span class="mi">2048</span><span class="p">}},</span>
+                <span class="n">config</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">type</span> <span class="o">=&gt;</span> <span class="n">standard_io</span><span class="p">}},</span>
+          <span class="p">_</span> <span class="o">=</span>
+              <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span>
+                       <span class="n">logger</span><span class="p">,</span>
+                       <span class="n">add_handler</span><span class="p">,</span>
+                       <span class="p">[</span><span class="n">rclref_redirect_ct</span><span class="p">,</span> <span class="n">ct_redirect_handler</span><span class="p">,</span> <span class="nv">ConfLog</span><span class="p">]),</span>
+
+          <span class="c">% Configuration</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">riak_core</span><span class="p">,</span> <span class="n">ring_creation_size</span><span class="p">,</span> <span class="mi">8</span><span class="p">]),</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">ensure_all_started</span><span class="p">,</span> <span class="p">[</span><span class="n">riak_core</span><span class="p">]),</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">ensure_all_started</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">]),</span>
+
+          <span class="nn">ct</span><span class="p">:</span><span class="nf">pal</span><span class="p">(</span><span class="s">&quot;Node </span><span class="si">~p</span><span class="s"> stated with (handoff) port </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">Port</span><span class="p">]),</span>
+          <span class="p">{</span><span class="n">connect</span><span class="p">,</span> <span class="nv">Node</span><span class="p">};</span>
+      <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">already_started</span><span class="p">,</span> <span class="nv">Node</span><span class="p">}</span> <span class="o">-&gt;</span>
+          <span class="nn">ct</span><span class="p">:</span><span class="nf">log</span><span class="p">(</span><span class="s">&quot;Node </span><span class="si">~p</span><span class="s"> already started, reusing node&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Node</span><span class="p">]),</span>
+          <span class="p">{</span><span class="n">ready</span><span class="p">,</span> <span class="nv">Node</span><span class="p">};</span>
+      <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">,</span> <span class="nv">Node</span><span class="p">}</span> <span class="o">-&gt;</span>
+          <span class="nn">ct</span><span class="p">:</span><span class="nf">pal</span><span class="p">(</span><span class="s">&quot;Error starting node </span><span class="si">~p</span><span class="s">, reason </span><span class="si">~p</span><span class="s">, will retry&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">]),</span>
+          <span class="nn">ct_slave</span><span class="p">:</span><span class="nf">stop</span><span class="p">(</span><span class="nv">Name</span><span class="p">),</span>
+          <span class="nn">time_utils</span><span class="p">:</span><span class="nf">wait_until_offline</span><span class="p">(</span><span class="nv">Node</span><span class="p">),</span>
+          <span class="n">start_node</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Port</span><span class="p">,</span> <span class="nv">Config</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">.</span>
+</code></pre></div>
+
+<p><code>start_node/3</code> is the main fuction for starting up the nodes.
+As soon as the slave node has started by using <code>ct_slave:start/2</code>, it is loading the applicaiton by rpc calls, such as <code>ok = rpc:call(Node, application, load, [riak_core])</code> and <code>ok = rpc:call(Node, application, load, [rclref])</code>. Once these are called, you can update the environment vairbales from the default values with <code>rpc:call(Node, appcliation, set_env, [...])</code>. In rclref, setting environmental values such as where to store the riak_core related data and which port is used for handoff and http communication are managed this way. </p>
+<div class="highlight"><pre><span></span><code>          <span class="c">% Logging Configuration</span>
+          <span class="nv">LogRoot</span> <span class="o">=</span> <span class="nn">filename</span><span class="p">:</span><span class="nf">join</span><span class="p">([</span><span class="nv">NodeWorkingDir</span><span class="p">,</span> <span class="s">&quot;suites&quot;</span><span class="p">,</span> <span class="nv">SuiteName</span><span class="p">,</span> <span class="nv">Node</span><span class="p">,</span> <span class="s">&quot;logs&quot;</span><span class="p">]),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="nn">rpc</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">set_env</span><span class="p">,</span> <span class="p">[</span><span class="n">rclref</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">log_config</span><span class="p">(</span><span class="nv">LogRoot</span><span class="p">)]),</span>
+</code></pre></div>
+
+<p>The snippet above is for setting up the logging environment. <code>LogRoot</code> is the log directory for each node. In rclref, nodes are not reused for each test suite for saftey reasons so logs are seperated from each suite. For test suite that uses two nodes, the log directory looks like the following.</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span>-- handoff_SUITE
+<span class="p">|</span>   <span class="p">|</span>-- node1@localhost
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- data
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="sb">`</span>-- ring
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>       <span class="p">|</span>-- riak_core_ring.default.20200817183651
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>       <span class="sb">`</span>-- riak_core_ring.default.20200817183720
+<span class="p">|</span>   <span class="p">|</span>   <span class="sb">`</span>-- logs
+<span class="p">|</span>   <span class="p">|</span>       <span class="p">|</span>-- debug.log
+<span class="p">|</span>   <span class="p">|</span>       <span class="p">|</span>-- error.log
+<span class="p">|</span>   <span class="p">|</span>       <span class="p">|</span>-- info.log
+<span class="p">|</span>   <span class="p">|</span>       <span class="p">|</span>-- notice.log
+<span class="p">|</span>   <span class="p">|</span>       <span class="sb">`</span>-- warning.log
+<span class="p">|</span>   <span class="sb">`</span>-- node2@localhost
+<span class="p">|</span>       <span class="p">|</span>-- data
+<span class="p">|</span>       <span class="p">|</span>   <span class="sb">`</span>-- ring
+<span class="p">|</span>       <span class="p">|</span>       <span class="p">|</span>-- riak_core_ring.default.20200817183650
+<span class="p">|</span>       <span class="p">|</span>       <span class="p">|</span>-- riak_core_ring.default.20200817183710
+<span class="p">|</span>       <span class="p">|</span>       <span class="sb">`</span>-- riak_core_ring.default.20200817183720
+<span class="p">|</span>       <span class="sb">`</span>-- logs
+<span class="p">|</span>           <span class="p">|</span>-- debug.log
+<span class="p">|</span>           <span class="p">|</span>-- error.log
+<span class="p">|</span>           <span class="p">|</span>-- info.log
+<span class="p">|</span>           <span class="p">|</span>-- notice.log
+<span class="p">|</span>           <span class="sb">`</span>-- warning.log
+</code></pre></div>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../put_get_delete/" class="btn btn-neutral" title="put, get, delete"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../put_get_delete/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

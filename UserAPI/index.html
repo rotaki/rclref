@@ -15,11 +15,12 @@
   <link rel="stylesheet" href="../css/theme.css" />
   <link rel="stylesheet" href="../css/theme_extra.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link href="https://unpkg.com/mermaid@8.0.0/dist/mermaid.css" rel="stylesheet" />
   
   <script>
     // Current page data
     var mkdocs_page_name = "rclref_client";
-    var mkdocs_page_input_path = "API.md";
+    var mkdocs_page_input_path = "UserAPI.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -51,6 +52,10 @@
                     <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
                     </li>
                 </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Sample_Usage/">Usage</a>
+                    </li>
+                </ul>
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="./">rclref_client</a>
     <ul class="current">
@@ -64,7 +69,11 @@
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../Usage/">Usage</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">put, get, delete</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed application in Erlang?</a>
                     </li>
                 </ul>
       </div>
@@ -113,19 +122,21 @@
 <li><a href="#orga550d0d">get(Key, Options)</a></li>
 <li><a href="#org0e2e4db">delete(Key)</a></li>
 <li><a href="#orgc8da9eb">delete(Key, Options)</a></li>
-<li><a href="#orge119355">reap_tombs(Key)</a></li>
-<li><a href="#orgad0f234">reap_tombs(Key, Options)</a></li>
+<li><a href="#orge119355">list_keys()</a></li>
+<li><a href="#orgad0f234">list_keys(Options)</a></li>
 </ol>
 <p><a id="org2a20286"></a></p>
 <h1 id="putkey-value">put(Key, Value)</h1>
-<pre class="highlight"><code>-spec put(rclref_object:key(), rclref_object:value()) -&gt; ok | {error, timeout} | {error, partial} |  {error, term()}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec put(rclref_object:key(), rclref_object:value()) -&gt; ok | {error, timeout} | {error, partial} |  {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>This is equal to <code>rclref_put(Key, Value, [])</code></p>
 <p><a id="org6c12821"></a></p>
 <h1 id="putkey-value-options">put(Key, Value, Options)</h1>
-<pre class="highlight"><code>-spec put(rclref_object:key(), rclref_object:value(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec put(rclref_object:key(), rclref_object:value(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>store a Key-Value in N vnodes. When W vnodes respond with ok or more than N-W number of vnodes respond with an error, this function will return. If neither of these is satisified within TIMEOUT_PUT, then this function will return {error, timeout}</p>
 <ul>
@@ -136,15 +147,16 @@
 </ul>
 <p><a id="org382c11b"></a></p>
 <h1 id="getkey">get(Key)</h1>
-<pre class="highlight"><code>-spec get(rclref_object:key()) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.
-
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec get(rclref_object:key()) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>This is equal to <code>get(Key, Value, Options)</code>.</p>
 <p><a id="orga550d0d"></a></p>
 <h1 id="getkey-options">get(Key, Options)</h1>
-<pre class="highlight"><code>-spec get(rclref_object:key(), [term()]) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec get(rclref_object:key(), [term()]) -&gt; {ok, [rclref_object:value()]} | {error, timeout} | {error, partial} | {error, not_found} | {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>get a Key-Value from N vnodes. When R number of vnodes respond with ok or more than N-R number of vnodes respond with an error, this fucntion will return. If neither of these is satisified with TIMEOUT_GET, then this function will return {error, timeout}</p>
 <p>On get, response from a vnode will be the either of <code>{ok, RObj}</code>,<code>{error, not_found}</code> , <code>{error, Reason}</code>  </p>
@@ -158,14 +170,16 @@
 </ul>
 <p><a id="org0e2e4db"></a></p>
 <h1 id="deletekey">delete(Key)</h1>
-<pre class="highlight"><code>-spec delete(rclref_object:key()) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec delete(rclref_object:key()) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>This is equal to <code>delete(Key, [])</code>.</p>
 <p><a id="orgc8da9eb"></a></p>
 <h1 id="deletekey-options">delete(Key, Options)</h1>
-<pre class="highlight"><code>-spec delete(rclref_object:key(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec delete(rclref_object:key(), [term()]) -&gt; ok | {error, timeout} | {error, partial} | {error, term()}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>This is equal to <code>put(Key, undefined, Options)</code>.
 Note that this will not delete the Key from the backend, however <code>rclref_client:get(Key)</code> will return <code>{error, not_found}</code> after calling this function.
@@ -173,15 +187,16 @@ The reason why this is implemeted this way is explained in the [TODO] section.
 A Key-Value with an undefined value is called a tombstone.</p>
 <p><a id="orge119355"></a></p>
 <h1 id="list_keys">list_keys()</h1>
-<pre class="highlight"><code>-spec list_keys() -&gt; {ok, [rclref_object:key()]}.
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec list_keys() -&gt; {ok, [rclref_object:key()]}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>This is equal to <code>list_keys([])</code>.</p>
 <p><a id="orgad0f234"></a></p>
 <h1 id="list_keysoptions">list_keys(Options)</h1>
-<pre class="highlight"><code>-spec list_keys([term()]) -&gt; {ok, [rclref_object:key()]}.
-
-</code></pre>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="err">-spec list_keys([term()]) -&gt; {ok, [rclref_object:key()]}.</span>
+</code></pre></div>
+</td></tr></table>
 
 <p>list all unique keys in the backend.</p>
               
@@ -191,10 +206,10 @@ A Key-Value with an undefined value is called a tombstone.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../Usage/" class="btn btn-neutral float-right" title="Usage">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../put_get_delete/" class="btn btn-neutral float-right" title="put, get, delete">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href=".." class="btn btn-neutral" title="Welcome to the rclref develoment site"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Sample_Usage/" class="btn btn-neutral" title="Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -220,15 +235,16 @@ A Key-Value with an undefined value is called a tombstone.</p>
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../Sample_Usage/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
-        <span style="margin-left: 15px"><a href="../Usage/" style="color: #fcfcfc">Next &raquo;</a></span>
+        <span style="margin-left: 15px"><a href="../put_get_delete/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
     <script>var base_url = '..';</script>
     <script src="../js/theme.js" defer></script>
+      <script src="https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js" defer></script>
       <script src="../search/main.js" defer></script>
     <script defer>
         window.onload = function () {

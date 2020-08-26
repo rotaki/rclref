@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Usage - rclref</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link href="https://unpkg.com/mermaid@8.0.0/dist/mermaid.css" rel="stylesheet" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Usage";
+    var mkdocs_page_input_path = "Sample_Usage.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rclref</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
+                    </li>
+                </ul>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Usage</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#erlang-interface">Erlang interface</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#http-interface">HTTP interface</a>
+    </li>
+    </ul>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../UserAPI/">rclref_client</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">put, get, delete</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed application in Erlang?</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rclref</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Usage</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="usage">Usage</h1>
+<h2 id="erlang-interface">Erlang interface</h2>
+<p>Get a Key-Value with key = dog</p>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">rclref</span><span class="p">@</span><span class="mi">127</span><span class="p">.</span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">.</span><span class="mi">1</span><span class="p">)</span><span class="mi">1</span><span class="o">&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;dog&quot;</span><span class="o">&gt;&gt;</span><span class="p">).</span>
+<span class="p">{</span><span class="n">error</span><span class="p">,</span><span class="n">not_found</span><span class="p">}</span>
+</code></pre></div>
+
+<p>Store a Key-Value with key = dog, value = cat</p>
+<div class="highlight"><pre><span></span><code><span class="gp">(rclref@127.0.0.1)2&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">put</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;dog&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="o">&lt;&lt;</span><span class="s">&quot;cat&quot;</span><span class="o">&gt;&gt;</span><span class="p">).</span>
+<span class="go">ok</span>
+</code></pre></div>
+
+<p>Get a Key-Value with key = dog</p>
+<div class="highlight"><pre><span></span><code><span class="gp">(rclref@127.0.0.1)7&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;dog&quot;</span><span class="o">&gt;&gt;</span><span class="p">).</span>
+<span class="go">{ok,[&lt;&lt;&quot;cat&quot;&gt;&gt;,&lt;&lt;&quot;cat&quot;&gt;&gt;,&lt;&lt;&quot;cat&quot;&gt;&gt;]}</span>
+</code></pre></div>
+
+<p>List all keys</p>
+<div class="highlight"><pre><span></span><code><span class="gp">(rclref@127.0.0.1)2&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nf">list_keys</span><span class="p">().</span>
+<span class="go">{ok,[&lt;&lt;&quot;dog&quot;&gt;&gt;]}</span>
+</code></pre></div>
+
+<p>Delete a Key-Value with key = dog. (Internally, this will not delete the value but leave it as a tombstone)</p>
+<div class="highlight"><pre><span></span><code><span class="gp">(rclref@127.0.0.1)8&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;dog&quot;</span><span class="o">&gt;&gt;</span><span class="p">).</span>
+<span class="go">ok</span>
+</code></pre></div>
+
+<p>Get a Key-Value with key = dog. Note that tombstones are not observable.</p>
+<div class="highlight"><pre><span></span><code><span class="gp">(rclref@127.0.0.1)8&gt;</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;dog&quot;</span><span class="o">&gt;&gt;</span><span class="p">).</span>
+<span class="go">{error,not_found}</span>
+</code></pre></div>
+
+<h2 id="http-interface">HTTP interface</h2>
+<p>Get a Key-Value with key = dog</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span> <span class="o">=</span>&gt; curl -X GET http://localhost:8080/rclref/dog
+<span class="o">{</span>
+  <span class="s2">&quot;error&quot;</span>: <span class="o">{</span>
+    <span class="s2">&quot;code&quot;</span>: <span class="m">404</span>,
+    <span class="s2">&quot;reason&quot;</span>: <span class="s2">&quot;not_found&quot;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p>Store a Key-Value with key = dog, value = cat</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span> <span class="o">=</span>&gt; curl -X POST http://localhost:8080/rclref/dog -d <span class="s1">&#39;cat&#39;</span>
+<span class="o">{</span>
+  <span class="s2">&quot;ok&quot;</span>: <span class="o">{</span>
+    <span class="s2">&quot;code&quot;</span>: <span class="m">200</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p>Get a Key-Value with key = dog</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span> <span class="o">=</span>&gt; curl -X GET http://localhost:8080/rclref/dog
+<span class="o">{</span>
+  <span class="s2">&quot;ok&quot;</span>: <span class="o">{</span>
+    <span class="s2">&quot;code&quot;</span>: <span class="m">200</span>,
+    <span class="s2">&quot;values&quot;</span>: <span class="o">[</span>
+      <span class="s2">&quot;cat&quot;</span>,
+      <span class="s2">&quot;cat&quot;</span>,
+      <span class="s2">&quot;cat&quot;</span>
+    <span class="o">]</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p>Delete a Key-Value with key = dog. (Internally, this will not delete the value but leave it as a tombstone)</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span> <span class="o">=</span>&gt; curl -X DELETE http://localhost:8080/rclref/dog
+<span class="o">{</span>
+  <span class="s2">&quot;ok&quot;</span>: <span class="o">{</span>
+    <span class="s2">&quot;code&quot;</span>: <span class="m">200</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p>Get a Key-Value with key = dog. Note that tombstones are not observable.</p>
+<div class="highlight"><pre><span></span><code><span class="p">|</span> <span class="o">=</span>&gt; curl -X GET http://localhost:8080/rclref/dog
+<span class="o">{</span>
+  <span class="s2">&quot;error&quot;</span>: <span class="o">{</span>
+    <span class="s2">&quot;code&quot;</span>: <span class="m">404</span>,
+    <span class="s2">&quot;reason&quot;</span>: <span class="s2">&quot;not_found&quot;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../UserAPI/" class="btn btn-neutral float-right" title="rclref_client">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href=".." class="btn btn-neutral" title="Welcome to the rclref develoment site"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../UserAPI/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
