@@ -1,8 +1,10 @@
-# How to setup riak_core_lite application?
+# How to a setup riak_core_lite application?
+
+This page provides an overview of how to setup a riak_core_lite applicaiton.
 
 ## Erlang
 
-Install Erlang OTP version 22
+Install Erlang OTP version > 22
 
 ## rebar3
 
@@ -10,7 +12,17 @@ Install rebar3
 
 ## riak_core_lite
 
-See [here](https://riak-core-lite.github.io/blog/pages/getting-started/) for how to setup riak_core_lite application.
+Clone riak_core_lite template by the following command:
+```sh
+mkdir -p ~/.config/rebar3/templates
+git clone https://github.com/riak-core-lite/rebar3_template_riak_core_lite.git ~/.config/rebar3/templates/rebar3_template_riak_core_lite
+```
+Create a new riak_core_lite project:
+```sh
+rebar3 new rebar3_riak_core_lite name=YOURAPP
+```
+
+See [here](https://riak-core-lite.github.io/blog/pages/getting-started/) for details.
 
 ## elvis
 
@@ -72,7 +84,11 @@ Configure it by creating `elvis.config` in the repository. The following snippet
 }].
 ```
 
-After configuring, the code can be reviewed by `elvis rock --config elvis.config`.
+After configuring, the code can be reviewed by:
+
+```sh
+elvis rock --config elvis.config
+```
 
 ## rebar3_format
 
@@ -85,8 +101,15 @@ Add the following lines to `rebar.config`.
 {format, [{files, ["apps/rclref/src/*.erl", "test/*.erl", "test/utils/*.erl"]}]}.
 ```
 
-The code can be formatted using `rebar3 format`.
+Then the code can be formatted by
+
+```sh
+rebar3 format
+```
 
 ## dialyzer
 
-A static type checking can be done by `rebar3 dialyzer`.
+A static type checking can be done by:
+```sh
+rebar3 dialyzer
+```

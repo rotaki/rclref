@@ -1,11 +1,12 @@
 site_name: rclref
 nav:
   - 'Home': 'index.md'
-  - 'How to setup riak_core_lite application?': 'setup.md'
+  - 'How to setup a riak_core_lite application?': 'setup.md'
   - 'How are put, get, delete implemented in rclref?': 'put_get_delete.md'
   - 'How to test distributed Erlang application using Common Test?': 'test.md'
   - 'How to benchmark riak_core_lite application?': 'benchmark.md'
-  - 'How to actually use rclref?': 'usage.md' 
+  - 'How to actually use rclref?': 'usage.md'
+  - 'Other' : 'other.md'
 theme: readthedocs
 markdown_extensions:
   - meta

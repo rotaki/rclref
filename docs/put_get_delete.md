@@ -1,5 +1,8 @@
 # How are put, get, delete implemented in rclref?
 
+!!! Warning
+    Please check out the [repository](https://github.com/wattlebirdaz/rclref) for the latest code.
+
 This page provides an overview of how put, get and delete are implemented in rclref.
 
 ## Code flow
@@ -130,3 +133,5 @@ Read [here](userapi.md) for implementation details.
 HttpAPI is provided using the `rclref_http_handler.erl` using the Cowboy library. This API reveals the same amount of information on put, get, and delete as the UserAPI.
 
 Read [here](httpapi.md) for implementation details.
+
+
