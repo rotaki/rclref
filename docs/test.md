@@ -1,7 +1,6 @@
-path: docs
-source: test.md
+# How to test distributed Erlang application using Common Test?
 
-# How to test distributed application in Erlang?
+This page provides an overview of how to test distributed application in Erlang.
 
 In rclref, Common Test (CT) is used for integrated testing.
 This post explains how to use CT for distributed applications assuming that the reader already knows how to use CT in a single node environment. The issue in testing distributed application in Erlang often relies on how to spawn multiple Erlang nodes from CT and how to manage their logs. The Goal of this post is to be able to test distirbuted Erlang application using `rebar3` and understand how to organize the logs of several distributed nodes.
@@ -75,8 +74,8 @@ set_up_nodes(Names, Ports, Config) ->
     Nodes.
 
 ```
-As shown in the snippet above, a node is spawned by `node_utls:start_node(Name, Port, Config)`.
-The function `node_utils:pmap` is an asynchronous map fuction which is used to start multiple slave nodes asynchronously.
+As shown in the snippet above, a node is spawned by `node_utls:start_node/3`.
+The function `node_utils:pmap/2` is an asynchronous map fuction which is used to start multiple slave nodes asynchronously.
 
 ```erlang
 -spec start_node(atom(), non_neg_integer(), [tuple()]) ->

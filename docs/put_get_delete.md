@@ -1,8 +1,8 @@
-# put, get, delete
+# How are put, get, delete implemented in rclref?
 
-This page shows provides an overview of how put, get and delete are implemented in rclref.
+This page provides an overview of how put, get and delete are implemented in rclref.
 
-## How are put, get and delete implemented?
+## Code flow
 
 Put, get and delete have almost the same code flow. 
 The code flow of `rclref_client:get(Key)` is shown in the following diagram.
@@ -11,8 +11,8 @@ The code flow of `rclref_client:get(Key)` is shown in the following diagram.
 title rclref_client:get(Key)
 
 [*] --> UserAPI 
-UserAPI -down-> API: get request
-API -down-> Supervisor
+UserAPI -down-> LowLevelAPI: get request
+LowLevelAPI -down-> Supervisor
 Supervisor -down-> Coordinator : simple one for one
 Coordinator --> Vnode1
 Coordinator --> Vnode2
@@ -20,91 +20,113 @@ Coordinator --> Vnode3
 Vnode1 --> Coordinator
 Vnode2 --> Coordinator
 Vnode3 --> Coordinator
-
-Coordinator -right-> API
-API -up-> UserAPI
+Vnode1 -down-> Backend1
+Vnode2 -down-> Backend2
+Vnode3 -down-> Backend3
+Backend1 --> Vnode1
+Backend2 --> Vnode2
+Backend3 --> Vnode3
+Coordinator -right-> LowLevelAPI
+LowLevelAPI -up-> UserAPI
 
 note right of Coordinator
-    When enough responses from vnodes are collected, return to API
+    Calculate hash to distribute request to vnodes.
+    When enough responses from vnodes are collected, return to API.
 end note
 
 UserAPI: rclref_client.erl
-API: rclref.erl
+LowLevelAPI: rclref.erl
 Supervisor: rclref_get_statem_sup.erl
 Coordinator: rclref_get_statem.erl
 Vnode1: rclref_vnode.erl
-Vnode1: rclref_ets_backend.erl
 Vnode2: rclref_vnode.erl
-Vnode2: rclref_ets_backend.erl
 Vnode3: rclref_vnode.erl
-Vnode3: rclref_ets_backend.erl
+Backend1: rclref_ets_backend.erl
+Backend2: rclref_ets_backend.erl
+Backend3: rclref_ets_backend.erl
+Backend1: rclref_dets_backend.erl
+Backend2: rclref_dets_backend.erl
+Backend3: rclref_dets_backend.erl
+
 ```
 
-The usage of the UserAPI (rclref_client.erl) is described in TODO section.
-When a user commands `rclref_client:get(Key)`, it will start a supervisor which manages a get coodinator in `simle one for one` strategy. Then the coordinator will ask the vnodes for data and send it back to the API module once it has collected a certain number of responses. Lets look at how each part of them are implemented in more detail.
+The main component of rclref is shown in the diagram above.
+When a user commands `rclref_client:get(Key)`, it will start a supervisor which manages a coodinator in `simle one for one` strategy. Then the coordinator will ask the vnodes for the requested data and send it back to the API module once it has collected a certain number of responses. Let's look at how each part of them are implemented from bottom up.
 
-## UserAPI
+## Backend
 
-The following is a snippet from [rclref_client.erl](https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_client.erl).
+Two types of backend is provided in rclref, which are ETS and DETS.
+ETS is short for Erlang Term Storage which is an in-memory storage that can store erlang terms. DETS is short for Disk ETS which is an disk based persistent storage with almost the same interface as ETS. Since DETS store data in the disk, it is much slower than ETS but has smaller memory footprint.
 
-```erl
--spec get(rclref_object:key(), [term()]) ->
-             {ok, [rclref_object:value()]} |
-             {error, timeout} |
-             {error, partial} |
-             {error, not_found} |
-             {error, [term()]}.
-get(Key, Options) when is_list(Options) ->
-    case rclref:get(Key, Options) of
-      {ok, RObjs} ->
-          {ok, [rclref_object:value(RObj) || RObj <- RObjs]};
-      {error, timeout} ->
-          {error, timeout};
-      {{ok, []}, {error, VnodeErrors}} ->
-          % If all the errors are not_found, return not_found. Otherwise return all errors.
-          Reasons = [rclref_object:error_reason(VnodeError) || VnodeError <- VnodeErrors],
-          case lists:all(fun (Reason) ->
-                                 Reason =:= not_found
-                         end,
-                         Reasons)
-              of
-            true ->
-                {error, not_found};
-            _ ->
-                {error, Reasons}
-          end;
-      {{ok, _RObjs}, {error, _VnodeErrors}} ->
-          {error, partial}
-    end.
-```
-
-
-
-## API
-
-## Supervisor
-
-## Coordinator
-A coordnator is a process that commnunicate with the vnodes. It is implemented using `gen_statem`.
-When a request is issued from the user, it will generate a hash to determin which vnodes to send the request to and send it to them. Usually, the coordinator will send the request to multiple vnodes. 
-
-
+Read [here](backend.md) for implementation details.
 
 ## Vnodes
-The main feature of riak_core is to distribute client requests to processes in the nodes in the cluster. These processes are often referred to as virtual nodes (vnodes). The number of vnodes in a cluster is dependent on the size of the ring of that cluster.  A ring is divided into a fixed number of partitions and each vnode is responsible for one of them. A hash will be calculated from a client’s request denoting which partition of the ring (thus, vnode) is responsible for handling the request. This is called consistent hashing. With consistent hashing, the following can be achieved.
+
+The main feature of riak_core(riak_core_lite) is to distribute client requests to processes in the nodes in the cluster. These processes are often referred to as virtual nodes (vnodes). The number of vnodes in a cluster is dependent on the size of the ring of that cluster. A ring is divided into a fixed number of partitions and each vnode is responsible for one of them. 
+
+When a client makes a request, a hash will be calculated from a client’s request denoting which partition of the ring (thus, vnode) is responsible for handling the request. This is called consistent hashing. With consistent hashing, the following can be achieved.
 
 - Even distribution of key workload between vnodes.
 - Smooth adaption to dynamic changes in the cluster by replication of data.
 
 A detailed explanation of consistent hashing is provided [here](http://blog.carlosgaldino.com/consistent-hashing.html).
 
-In rclref, a vnode does a lot of things.
+In rclref, a vnode handles the following requests.
 
-- handle put, get, delete request
-- handle handoff request
-- handle coverage request
+- put, get, delete request
+- handoff request
+- coverage request
 
-This page will explain how put, get and delete are implemented in rclref.
+Read [here](vnodes.md) for implementation details.
+
+## Coordinator
+
+Requests made by a client are handled by a coordinator. The coordinator will interact with the vnodes by sending and receiving the requests. For example, if it receives a put request, it generates a hash to determine which vnodes to send the requests to and send it to them. Usually, the coordinator will send the put request to multiple vnodes so that multiple copies of the object exist in the cluster. This is called replication and this ensures the fault tolerance of the database. 
+
+Read [here](coordinator.md) for implementation details.
+
+## Supervisor
+
+Supervisors are used to manage the coordinators. They will restart the coordinator process when needed.
+
+Read [here](supervisor.md) for implementation details.
 
 
+## API
 
+In rclref, three APIs are provided that can be used to put, get and delete an object from the backend. 
+
+- LowLevelAPI
+- UserAPI
+- HttpAPI
+
+It is recommended that the user only use the UserLevelAPI and HttpAPI for manipulating the database. LowLevelAPI should only be used for debugging.
+The usage of UserAPI and HttpAPI is provided [here](usage.md).
+
+### LowLevelAPI
+
+LowLevelAPI is provided by `rclref.erl` module. This API should only be used in the case of debugging because it reveals detailed information about the object on put, get and delete which should be transparent to the user of rclref. Such as
+
+- node
+- partition number
+- vector clock 
+
+In addition, some queries are exclusive to this module such as
+
+- reap
+- list_all_keys
+- list_all_objects
+
+Read [here](lowlevelapi.md) for implementation details.
+
+### UserAPI
+
+UserAPI is provided by `rclref_client.erl` module. Compared with the LowLevelAPI, this API reveals less information on put, get, and delete. 
+
+Read [here](userapi.md) for implementation details.
+
+### HttpAPI
+
+HttpAPI is provided using the `rclref_http_handler.erl` using the Cowboy library. This API reveals the same amount of information on put, get, and delete as the UserAPI.
+
+Read [here](httpapi.md) for implementation details.

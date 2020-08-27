@@ -1,6 +1,9 @@
-# Usage
+# How to actually use rclref?
 
-## Erlang interface
+This page descirbes how to use rclref as a key-value store.
+First start the application by `make`, `make console`.
+
+## UserAPI
 
 Get a Key-Value with key = dog
 
@@ -12,41 +15,41 @@ Get a Key-Value with key = dog
 Store a Key-Value with key = dog, value = cat
 
 
-```erl
+```erlang
 (rclref@127.0.0.1)2> rclref_client:put(<<"dog">>, <<"cat">>).
 ok
 ```
 
 Get a Key-Value with key = dog
 
-```erl
-(rclref@127.0.0.1)7> rclref_client:get(<<"dog">>).
+```erlang
+(rclref@127.0.0.1)3> rclref_client:get(<<"dog">>).
 {ok,[<<"cat">>,<<"cat">>,<<"cat">>]}
 ```
 
 List all keys
 
-```erl
-(rclref@127.0.0.1)2> rclref_client:list_keys().
+```erlang
+(rclref@127.0.0.1)4> rclref_client:list_keys().
 {ok,[<<"dog">>]}
 ```
 
 Delete a Key-Value with key = dog. (Internally, this will not delete the value but leave it as a tombstone)
 
-```erl
-(rclref@127.0.0.1)8> rclref_client:delete(<<"dog">>).
+```erlang
+(rclref@127.0.0.1)5> rclref_client:delete(<<"dog">>).
 ok
 ```
 
 Get a Key-Value with key = dog. Note that tombstones are not observable.
 
-```erl
-(rclref@127.0.0.1)8> rclref_client:get(<<"dog">>).
+```erlang
+(rclref@127.0.0.1)6> rclref_client:get(<<"dog">>).
 {error,not_found}
 ```
 
 
-## HTTP interface
+## HttpAPI
 
 Get a Key-Value with key = dog
 
