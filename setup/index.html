@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>How to setup riak_core_lite application? - rclref</title>
+  <title>How to setup a riak_core_lite application? - rclref</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -19,7 +19,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "How to setup riak_core_lite application?";
+    var mkdocs_page_name = "How to setup a riak_core_lite application?";
     var mkdocs_page_input_path = "setup.md";
     var mkdocs_page_url = null;
   </script>
@@ -53,7 +53,7 @@
                     </li>
                 </ul>
                 <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">How to setup riak_core_lite application?</a>
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">How to setup a riak_core_lite application?</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#erlang">Erlang</a>
     </li>
@@ -86,6 +86,10 @@
                     <li class="toctree-l1"><a class="reference internal" href="../usage/">How to actually use rclref?</a>
                     </li>
                 </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../other/">Other</a>
+                    </li>
+                </ul>
       </div>
     </div>
     </nav>
@@ -107,7 +111,7 @@
     
       
     
-    <li>How to setup riak_core_lite application?</li>
+    <li>How to setup a riak_core_lite application?</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -118,13 +122,21 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="how-to-setup-riak_core_lite-application">How to setup riak_core_lite application?</h1>
+                <h1 id="how-to-a-setup-riak_core_lite-application">How to a setup riak_core_lite application?</h1>
+<p>This page provides an overview of how to setup a riak_core_lite applicaiton.</p>
 <h2 id="erlang">Erlang</h2>
-<p>Install Erlang OTP version 22</p>
+<p>Install Erlang OTP version &gt; 22</p>
 <h2 id="rebar3">rebar3</h2>
 <p>Install rebar3</p>
 <h2 id="riak_core_lite">riak_core_lite</h2>
-<p>See <a href="https://riak-core-lite.github.io/blog/pages/getting-started/">here</a> for how to setup riak_core_lite application.</p>
+<p>Clone riak_core_lite template by the following command:
+<div class="highlight"><pre><span></span><code>mkdir -p ~/.config/rebar3/templates
+git clone https://github.com/riak-core-lite/rebar3_template_riak_core_lite.git ~/.config/rebar3/templates/rebar3_template_riak_core_lite
+</code></pre></div>
+Create a new riak_core_lite project:
+<div class="highlight"><pre><span></span><code>rebar3 new rebar3_riak_core_lite <span class="nv">name</span><span class="o">=</span>YOURAPP
+</code></pre></div></p>
+<p>See <a href="https://riak-core-lite.github.io/blog/pages/getting-started/">here</a> for details.</p>
 <h2 id="elvis">elvis</h2>
 <p>Elvis is a Erlang style reviewer. 
 Install Elvis from <a href="https://github.com/inaka/elvis">here</a>.
@@ -182,7 +194,10 @@ Configure it by creating <code>elvis.config</code> in the repository. The follow
 <span class="p">}].</span>
 </code></pre></div>
 
-<p>After configuring, the code can be reviewed by <code>elvis rock --config elvis.config</code>.</p>
+<p>After configuring, the code can be reviewed by:</p>
+<div class="highlight"><pre><span></span><code>elvis rock --config elvis.config
+</code></pre></div>
+
 <h2 id="rebar3_format">rebar3_format</h2>
 <p>rebar3_format is a code formatter for Erlang.</p>
 <p>Add the following lines to <code>rebar.config</code>.</p>
@@ -190,9 +205,14 @@ Configure it by creating <code>elvis.config</code> in the repository. The follow
 <span class="p">{</span><span class="n">format</span><span class="p">,</span> <span class="p">[{</span><span class="n">files</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;apps/rclref/src/*.erl&quot;</span><span class="p">,</span> <span class="s">&quot;test/*.erl&quot;</span><span class="p">,</span> <span class="s">&quot;test/utils/*.erl&quot;</span><span class="p">]}]}.</span>
 </code></pre></div>
 
-<p>The code can be formatted using <code>rebar3 format</code>.</p>
+<p>Then the code can be formatted by</p>
+<div class="highlight"><pre><span></span><code>rebar3 format
+</code></pre></div>
+
 <h2 id="dialyzer">dialyzer</h2>
-<p>A static type checking can be done by <code>rebar3 dialyzer</code>.</p>
+<p>A static type checking can be done by:
+<div class="highlight"><pre><span></span><code>rebar3 dialyzer
+</code></pre></div></p>
               
             </div>
           </div>
