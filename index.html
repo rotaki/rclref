@@ -19,7 +19,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Welcome to the rclref develoment site";
+    var mkdocs_page_name = "Home";
     var mkdocs_page_input_path = "index.md";
     var mkdocs_page_url = null;
   </script>
@@ -49,25 +49,29 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
                 <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href=".">Welcome to the rclref develoment site</a>
+                    <li class="toctree-l1 current"><a class="reference internal current" href=".">Home</a>
     <ul class="current">
     </ul>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="Sample_Usage/">Usage</a>
+                    <li class="toctree-l1"><a class="reference internal" href="setup/">How to setup riak_core_lite application?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="UserAPI/">rclref_client</a>
+                    <li class="toctree-l1"><a class="reference internal" href="put_get_delete/">How are put, get, delete implemented in rclref?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="put_get_delete/">put, get, delete</a>
+                    <li class="toctree-l1"><a class="reference internal" href="test/">How to test distributed Erlang application using Common Test?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="test/">How to test distributed application in Erlang?</a>
+                    <li class="toctree-l1"><a class="reference internal" href="benchmark/">How to benchmark riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="usage/">How to actually use rclref?</a>
                     </li>
                 </ul>
       </div>
@@ -91,7 +95,7 @@
     
       
     
-    <li>Welcome to the rclref develoment site</li>
+    <li>Home</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -104,12 +108,20 @@
               
                 <h1 id="welcome-to-the-rclref-develoment-site">Welcome to the rclref develoment site</h1>
 <p>rclref is a reference implementation of a key-value store built on riak-core-lite.
-rclref was created as part of Google Summer of Code 2020 with the aim of exercising various APIs of riak-core-lite with documented support.</p>
+rclref was created as part of Google Summer of Code 2020 with the aim of exercising various APIs of riak-core-lite with documented support.
+Updated version of the code is <a href="https://github.com/wattlebirdaz/rclref">here</a>.</p>
 <h1 id="development-languages-and-tools">Development languages and tools</h1>
 <p>The code is fully written in Erlang OTP &gt; 21.</p>
 <h1 id="license">License</h1>
 <p>rclref is released under Apache License, Version 2.0</p>
 <h1 id="table-of-cotents">Table of Cotents</h1>
+<ol>
+<li><a href="setup/">How to setup riak_core_lite application?</a></li>
+<li><a href="put_get_delete/">How are put, get, delete implemented in rclref?</a></li>
+<li><a href="test/">How to test distributed Erlang application using Common Test?</a></li>
+<li><a href="benchmark/">How to benchmark riak_core_lite application?</a></li>
+<li><a href="usage/">How to actually use rclref?</a></li>
+</ol>
               
             </div>
           </div>
@@ -117,7 +129,7 @@ rclref was created as part of Google Summer of Code 2020 with the aim of exercis
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="Sample_Usage/" class="btn btn-neutral float-right" title="Usage">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="setup/" class="btn btn-neutral float-right" title="How to setup riak_core_lite application?">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
     </div>
@@ -145,7 +157,7 @@ rclref was created as part of Google Summer of Code 2020 with the aim of exercis
       
       
       
-        <span style="margin-left: 15px"><a href="Sample_Usage/" style="color: #fcfcfc">Next &raquo;</a></span>
+        <span style="margin-left: 15px"><a href="setup/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
@@ -164,5 +176,5 @@ rclref was created as part of Google Summer of Code 2020 with the aim of exercis
 
 <!--
 MkDocs version : 1.1.2
-Build Date UTC : 2020-08-26 06:16:55.214687+00:00
+Build Date UTC : 2020-08-27 11:07:02.625055+00:00
 -->

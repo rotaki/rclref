@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>How to test distributed application in Erlang? - rclref</title>
+  <title>How to test distributed Erlang application using Common Test? - rclref</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -19,7 +19,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "How to test distributed application in Erlang?";
+    var mkdocs_page_name = "How to test distributed Erlang application using Common Test?";
     var mkdocs_page_input_path = "test.md";
     var mkdocs_page_url = null;
   </script>
@@ -49,25 +49,29 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../Sample_Usage/">Usage</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../setup/">How to setup riak_core_lite application?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../UserAPI/">rclref_client</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">put, get, delete</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">How are put, get, delete implemented in rclref?</a>
                     </li>
                 </ul>
                 <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">How to test distributed application in Erlang?</a>
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">How to test distributed Erlang application using Common Test?</a>
     <ul class="current">
     </ul>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../benchmark/">How to benchmark riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../usage/">How to actually use rclref?</a>
                     </li>
                 </ul>
       </div>
@@ -91,7 +95,7 @@
     
       
     
-    <li>How to test distributed application in Erlang?</li>
+    <li>How to test distributed Erlang application using Common Test?</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -102,7 +106,8 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="how-to-test-distributed-application-in-erlang">How to test distributed application in Erlang?</h1>
+                <h1 id="how-to-test-distributed-erlang-application-using-common-test">How to test distributed Erlang application using Common Test?</h1>
+<p>This page provides an overview of how to test distributed application in Erlang.</p>
 <p>In rclref, Common Test (CT) is used for integrated testing.
 This post explains how to use CT for distributed applications assuming that the reader already knows how to use CT in a single node environment. The issue in testing distributed application in Erlang often relies on how to spawn multiple Erlang nodes from CT and how to manage their logs. The Goal of this post is to be able to test distirbuted Erlang application using <code>rebar3</code> and understand how to organize the logs of several distributed nodes.</p>
 <p>The following is a snippet from <a href="https://github.com/wattlebirdaz/rclref/blob/master/test/single_node/client_SUITE.erl">client_SUITE.erl</a> in rclref repository.</p>
@@ -166,8 +171,8 @@ This post explains how to use CT for distributed applications assuming that the 
     <span class="n">ok</span> <span class="o">=</span> <span class="nn">riak_utils</span><span class="p">:</span><span class="nf">wait_until_ring_converged</span><span class="p">(</span><span class="nv">Nodes</span><span class="p">),</span>
     <span class="nv">Nodes</span><span class="p">.</span>
 </code></pre></div>
-As shown in the snippet above, a node is spawned by <code>node_utls:start_node(Name, Port, Config)</code>.
-The function <code>node_utils:pmap</code> is an asynchronous map fuction which is used to start multiple slave nodes asynchronously.</p>
+As shown in the snippet above, a node is spawned by <code>node_utls:start_node/3</code>.
+The function <code>node_utils:pmap/2</code> is an asynchronous map fuction which is used to start multiple slave nodes asynchronously.</p>
 <div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">spec</span> <span class="n">start_node</span><span class="p">(</span><span class="n">atom</span><span class="p">(),</span> <span class="n">non_neg_integer</span><span class="p">(),</span> <span class="p">[</span><span class="n">tuple</span><span class="p">()])</span> <span class="o">-&gt;</span>
                     <span class="p">{</span><span class="n">connect</span><span class="p">,</span> <span class="nb">node</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">ready</span><span class="p">,</span> <span class="nb">node</span><span class="p">()}.</span>
 <span class="nf">start_node</span><span class="p">(</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Port</span><span class="p">,</span> <span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
@@ -293,8 +298,10 @@ As soon as the slave node has started by using <code>ct_slave:start/2</code>, it
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="../benchmark/" class="btn btn-neutral float-right" title="How to benchmark riak_core_lite application?">Next <span class="icon icon-circle-arrow-right"></span></a>
       
-        <a href="../put_get_delete/" class="btn btn-neutral" title="put, get, delete"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+        <a href="../put_get_delete/" class="btn btn-neutral" title="How are put, get, delete implemented in rclref?"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -322,6 +329,8 @@ As soon as the slave node has started by using <code>ct_slave:start/2</code>, it
       
         <span><a href="../put_get_delete/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
+      
+        <span style="margin-left: 15px"><a href="../benchmark/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>

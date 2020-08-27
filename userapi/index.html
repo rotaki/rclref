@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>rclref_client - rclref</title>
+  <title>UserAPI - rclref</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -19,8 +19,8 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "rclref_client";
-    var mkdocs_page_input_path = "UserAPI.md";
+    var mkdocs_page_name = "UserAPI";
+    var mkdocs_page_input_path = "userapi.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -49,31 +49,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the rclref develoment site</a>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../Sample_Usage/">Usage</a>
-                    </li>
-                </ul>
-                <ul class="current">
-                    <li class="toctree-l1 current"><a class="reference internal current" href="./">rclref_client</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#module">Module</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#module-summary">Module Summary</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#description">Description</a>
-    </li>
-    </ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../setup/">How to setup riak_core_lite application?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">put, get, delete</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">How are put, get, delete implemented in rclref?</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed application in Erlang?</a>
+                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed Erlang application using Common Test?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../benchmark/">How to benchmark riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../usage/">How to actually use rclref?</a>
                     </li>
                 </ul>
       </div>
@@ -97,7 +93,7 @@
     
       
     
-    <li>rclref_client</li>
+    <li>UserAPI</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -108,7 +104,8 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="rclref_client">rclref_client</h1>
+                <h1 id="userapi">UserAPI</h1>
+<h1 id="rclref_client">rclref_client</h1>
 <h2 id="module">Module</h2>
 <p>rclref_client</p>
 <h2 id="module-summary">Module Summary</h2>
@@ -204,15 +201,6 @@ A Key-Value with an undefined value is called a tombstone.</p>
           </div>
           <footer>
   
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../put_get_delete/" class="btn btn-neutral float-right" title="put, get, delete">Next <span class="icon icon-circle-arrow-right"></span></a>
-      
-      
-        <a href="../Sample_Usage/" class="btn btn-neutral" title="Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-      
-    </div>
-  
 
   <hr/>
 
@@ -235,10 +223,6 @@ A Key-Value with an undefined value is called a tombstone.</p>
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
-        <span><a href="../Sample_Usage/" style="color: #fcfcfc;">&laquo; Previous</a></span>
-      
-      
-        <span style="margin-left: 15px"><a href="../put_get_delete/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>

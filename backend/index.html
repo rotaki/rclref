@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Backend - rclref</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link href="https://unpkg.com/mermaid@8.0.0/dist/mermaid.css" rel="stylesheet" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Backend";
+    var mkdocs_page_input_path = "backend.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rclref</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../setup/">How to setup riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">How are put, get, delete implemented in rclref?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed Erlang application using Common Test?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../benchmark/">How to benchmark riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../usage/">How to actually use rclref?</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rclref</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Backend</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="backend">Backend</h1>
+<p>As shown in the diagram in TODO, each vnode will have their own backend to store the key-value.</p>
+<h2 id="backend-behaviour">Backend Behaviour</h2>
+<p>In order to make a generic backend that can support storages engines like <code>ets</code> or <code>dets</code> or even other modules depending on user preference, we will first implement a backend behaviour called <code>rclref_backend.erl</code>. In this module, we will declare functions that are essential for a backend to work.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">rclref_backend</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">type</span> <span class="n">state</span><span class="p">()</span> <span class="p">::</span> <span class="n">term</span><span class="p">().</span>
+<span class="p">-</span><span class="ni">type</span> <span class="n">fold_keys_fun</span><span class="p">()</span> <span class="p">::</span> <span class="k">fun</span><span class="p">((</span><span class="n">term</span><span class="p">(),</span> <span class="n">any</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">any</span><span class="p">()</span> <span class="p">|</span> <span class="n">no_return</span><span class="p">()).</span>
+<span class="p">-</span><span class="ni">type</span> <span class="n">fold_objects_fun</span><span class="p">()</span> <span class="p">::</span> <span class="k">fun</span><span class="p">((</span><span class="n">term</span><span class="p">(),</span> <span class="n">term</span><span class="p">(),</span> <span class="n">any</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">any</span><span class="p">()</span> <span class="p">|</span> <span class="n">no_return</span><span class="p">()).</span>
+<span class="p">-</span><span class="ni">type</span> <span class="n">fold_acc</span><span class="p">()</span> <span class="p">::</span> <span class="n">term</span><span class="p">().</span>
+<span class="p">-</span><span class="ni">type</span> <span class="n">fold_opts</span><span class="p">()</span> <span class="p">::</span> <span class="p">[</span><span class="n">term</span><span class="p">()].</span>
+<span class="p">-</span><span class="ni">type</span> <span class="n">fold_result</span><span class="p">()</span> <span class="p">::</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">fold_acc</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">async</span><span class="p">,</span> <span class="k">fun</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">()}.</span>
+
+<span class="p">-</span><span class="ni">callback</span> <span class="n">start</span><span class="p">(</span><span class="nv">PartitionIndex</span> <span class="p">::</span> <span class="n">non_neg_integer</span><span class="p">(),</span> <span class="nv">Config</span> <span class="p">::</span> <span class="p">[{</span><span class="n">atom</span><span class="p">(),</span> <span class="n">term</span><span class="p">()}])</span> <span class="o">-&gt;</span>
+                   <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">state</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">stop</span><span class="p">(</span><span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">ok</span><span class="p">.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="nb">get</span><span class="p">(</span><span class="nn">rclref_object</span><span class="p">:</span><span class="nf">key</span><span class="p">(),</span> <span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span>
+                 <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Value</span> <span class="p">::</span> <span class="n">term</span><span class="p">(),</span> <span class="n">state</span><span class="p">()}</span> <span class="p">|</span>
+                 <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">not_found</span><span class="p">,</span> <span class="n">state</span><span class="p">()}</span> <span class="p">|</span>
+                 <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">(),</span> <span class="n">state</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="nb">put</span><span class="p">(</span><span class="nn">rclref_object</span><span class="p">:</span><span class="nf">key</span><span class="p">(),</span> <span class="nv">Value</span> <span class="p">::</span> <span class="n">binary</span><span class="p">(),</span> <span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span>
+                 <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">state</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">(),</span> <span class="n">state</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">delete</span><span class="p">(</span><span class="nn">rclref_object</span><span class="p">:</span><span class="nf">key</span><span class="p">(),</span> <span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span>
+                    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">state</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">(),</span> <span class="n">state</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">drop</span><span class="p">(</span><span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">state</span><span class="p">()}</span> <span class="p">|</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">(),</span> <span class="n">state</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">fold_keys</span><span class="p">(</span><span class="n">fold_keys_fun</span><span class="p">(),</span> <span class="n">fold_acc</span><span class="p">(),</span> <span class="n">fold_opts</span><span class="p">(),</span> <span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">fold_result</span><span class="p">().</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">fold_objects</span><span class="p">(</span><span class="n">fold_objects_fun</span><span class="p">(),</span> <span class="n">fold_acc</span><span class="p">(),</span> <span class="n">fold_opts</span><span class="p">(),</span> <span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span>
+                          <span class="n">fold_result</span><span class="p">().</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">is_empty</span><span class="p">(</span><span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">boolean</span><span class="p">()</span> <span class="p">|</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">term</span><span class="p">()}.</span>
+<span class="p">-</span><span class="ni">callback</span> <span class="n">status</span><span class="p">(</span><span class="n">state</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="p">[{</span><span class="n">atom</span><span class="p">(),</span> <span class="n">term</span><span class="p">()}].</span>
+</code></pre></div>
+
+<h2 id="ets-backend">ETS backend</h2>
+<p>After implementing <code>rclref_backend.erl</code>, we need to implement an actual backend that utilizes this behaviour. A sample implementation using Erlang Term Storage (ets) is given in the following snippet. Implementation using disk-based term storage (dets) is also provided in the repository.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">rclref_ets_backend</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">behaviour</span><span class="p">(</span><span class="n">rclref_backend</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">state</span><span class="p">,</span> <span class="p">{</span><span class="n">table_id</span><span class="p">}).</span>
+
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">start</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">stop</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="nb">get</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="nb">put</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">delete</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">drop</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="n">fold_keys</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">fold_keys</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span>
+         <span class="n">fold_objects</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="n">fold_objects</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="n">is_empty</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="n">status</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+
+<span class="nf">start</span><span class="p">(_</span><span class="nv">PartitionIndex</span><span class="p">,</span> <span class="p">_</span><span class="nv">Config</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">TableId</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">new</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">[</span><span class="n">set</span><span class="p">,</span> <span class="p">{</span><span class="n">write_concurrency</span><span class="p">,</span> <span class="n">false</span><span class="p">},</span> <span class="p">{</span><span class="n">read_concurrency</span><span class="p">,</span> <span class="n">false</span><span class="p">}]),</span>
+    <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">},</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">stop</span><span class="p">(_</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="n">true</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="nv">TableId</span><span class="p">),</span>
+    <span class="n">ok</span><span class="p">.</span>
+
+<span class="nb">get</span><span class="p">(</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">lookup</span><span class="p">(</span><span class="nv">TableId</span><span class="p">,</span> <span class="nv">Key</span><span class="p">)</span> <span class="k">of</span>
+      <span class="p">[]</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">not_found</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+      <span class="p">[{_,</span> <span class="nv">Value</span><span class="p">}]</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Value</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+      <span class="nv">Reason</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">,</span> <span class="nv">State</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">.</span>
+
+<span class="nb">put</span><span class="p">(</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">,</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="n">true</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">insert</span><span class="p">(</span><span class="nv">TableId</span><span class="p">,</span> <span class="p">{</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">}),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">delete</span><span class="p">(</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="n">true</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="nv">TableId</span><span class="p">,</span> <span class="nv">Key</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">drop</span><span class="p">(</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="n">true</span> <span class="o">=</span> <span class="nn">ets</span><span class="p">:</span><span class="nf">delete_all_objects</span><span class="p">(</span><span class="nv">TableId</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">is_empty</span><span class="p">(_</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">first</span><span class="p">(</span><span class="nv">TableId</span><span class="p">)</span> <span class="o">=:=</span> <span class="n">&#39;$end_of_table&#39;</span><span class="p">.</span>
+
+<span class="nf">fold_keys</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="n">fold_keys</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">,</span> <span class="p">[],</span> <span class="nv">State</span><span class="p">).</span>
+
+<span class="nf">fold_keys</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc0</span><span class="p">,</span> <span class="p">_</span><span class="nv">Options</span><span class="p">,</span> <span class="p">_</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nv">FoldKeysFun</span> <span class="o">=</span>
+        <span class="k">fun</span> <span class="p">({</span><span class="nv">K</span><span class="p">,</span> <span class="p">_},</span> <span class="nv">A</span><span class="p">)</span> <span class="o">-&gt;</span>
+                <span class="nv">Fun</span><span class="p">(</span><span class="nv">K</span><span class="p">,</span> <span class="nv">A</span><span class="p">)</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">foldl</span><span class="p">(</span><span class="nv">FoldKeysFun</span><span class="p">,</span> <span class="nv">Acc0</span><span class="p">,</span> <span class="nv">TableId</span><span class="p">).</span>
+
+<span class="nf">fold_objects</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">,</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="n">fold_objects</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">,</span> <span class="p">[],</span> <span class="nv">State</span><span class="p">).</span>
+
+<span class="nf">fold_objects</span><span class="p">(</span><span class="nv">Fun</span><span class="p">,</span> <span class="nv">Acc0</span><span class="p">,</span> <span class="p">_</span><span class="nv">Options</span><span class="p">,</span> <span class="p">_</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nv">FoldObjectsFun</span> <span class="o">=</span>
+        <span class="k">fun</span> <span class="p">({</span><span class="nv">K</span><span class="p">,</span> <span class="nv">V</span><span class="p">},</span> <span class="nv">A</span><span class="p">)</span> <span class="o">-&gt;</span>
+                <span class="nv">Fun</span><span class="p">(</span><span class="nv">K</span><span class="p">,</span> <span class="nv">V</span><span class="p">,</span> <span class="nv">A</span><span class="p">)</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">foldl</span><span class="p">(</span><span class="nv">FoldObjectsFun</span><span class="p">,</span> <span class="nv">Acc0</span><span class="p">,</span> <span class="nv">TableId</span><span class="p">).</span>
+
+<span class="nf">status</span><span class="p">(_</span><span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">table_id</span> <span class="o">=</span> <span class="nv">TableId</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">ets</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="nv">TableId</span><span class="p">).</span>
+</code></pre></div>
+
+<p>Now let's look at the implementation of vnodes to see how they use these backend modules.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
