@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>HttpAPI - rclref</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  <link href="https://unpkg.com/mermaid@8.0.0/dist/mermaid.css" rel="stylesheet" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "HttpAPI";
+    var mkdocs_page_input_path = "httpapi.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rclref</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../setup/">How to setup a riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../put_get_delete/">How are put, get, delete implemented in rclref?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../test/">How to test distributed Erlang application using Common Test?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../benchmark/">How to benchmark riak_core_lite application?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../usage/">How to actually use rclref?</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../other/">Other</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rclref</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>HttpAPI</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="httpapi">HttpAPI</h1>
+<p>This page provides an overview of how Http API is implemented in rclref.
+Http API is implemented using the cowboy library. Check <a href="https://github.com/ninenines/cowboy"><code>here</code></a> for details of cowboy.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Please check out the <a href="https://github.com/wattlebirdaz/rclref">repository</a> for the latest code.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Add <code>cowboy</code> and <code>jsx</code> as the dependency in <code>rebar.config</code> and <code>rclref.app.src</code>.</p>
+</div>
+<h2 id="starting-http-server">Starting Http Server</h2>
+<p>To start the http server on starting the application, add the following function in the <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_app.erl"><code>rclref_app.erl</code></a> and call it inside <code>rclref_app:start/2</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">setup_http_api</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nv">Dispatch</span> <span class="o">=</span> <span class="nn">cowboy_router</span><span class="p">:</span><span class="nf">compile</span><span class="p">([{</span><span class="n">&#39;_&#39;</span><span class="p">,</span> <span class="p">[{</span><span class="s">&quot;/rclref/:key&quot;</span><span class="p">,</span> <span class="n">rclref_http_handler</span><span class="p">,</span> <span class="p">[]}]}]),</span>
+    <span class="nv">HttpPort</span> <span class="o">=</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">http_port</span><span class="p">(),</span>
+    <span class="nv">HttpAcceptors</span> <span class="o">=</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">http_acceptors</span><span class="p">(),</span>
+    <span class="nv">HttpMaxConnections</span> <span class="o">=</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">http_max_connections</span><span class="p">(),</span>
+
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Starting HTTP API at port </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">HttpPort</span><span class="p">]),</span>
+
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span>
+        <span class="nn">cowboy</span><span class="p">:</span><span class="nf">start_clear</span><span class="p">(</span><span class="n">rclref_http_listener</span><span class="p">,</span>
+                           <span class="p">[{</span><span class="n">port</span><span class="p">,</span> <span class="nv">HttpPort</span><span class="p">},</span>
+                            <span class="p">{</span><span class="n">num_acceptors</span><span class="p">,</span> <span class="nv">HttpAcceptors</span><span class="p">},</span>
+                            <span class="p">{</span><span class="n">max_connections</span><span class="p">,</span> <span class="nv">HttpMaxConnections</span><span class="p">}],</span>
+                           <span class="p">#{</span><span class="n">env</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">dispatch</span> <span class="o">=&gt;</span> <span class="nv">Dispatch</span><span class="p">}}),</span>
+
+    <span class="n">ok</span><span class="p">.</span>
+</code></pre></div>
+
+<h2 id="writing-the-handler">Writing the handler</h2>
+<p>The handler for http request is defined in <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_http_handler.erl"><code>rclref_http_handler</code></a>. A http request will be converted to a request using <code>rclref_client</code> module. Then the response will be converted to a JSON format using the jsx library and sent back to the client.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">rclref_http_handler</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">init</span><span class="o">/</span><span class="mi">2</span><span class="p">]).</span>
+
+<span class="nf">init</span><span class="p">(</span><span class="nv">ReqIn</span> <span class="o">=</span> <span class="p">#{</span><span class="n">method</span> <span class="p">:</span><span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;POST&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">Key</span> <span class="o">=</span> <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">binding</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nv">ReqIn</span><span class="p">),</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Value</span><span class="p">,</span> <span class="nv">Req1</span><span class="p">}</span> <span class="o">=</span> <span class="n">read_all_body</span><span class="p">(</span><span class="nv">ReqIn</span><span class="p">),</span>
+    <span class="nv">ReqOut</span> <span class="o">=</span>
+        <span class="k">case</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">put</span><span class="p">(</span><span class="nv">Key</span><span class="p">,</span> <span class="nv">Value</span><span class="p">)</span> <span class="k">of</span>
+          <span class="n">ok</span> <span class="o">-&gt;</span>
+              <span class="nv">OK</span> <span class="o">=</span> <span class="p">#{</span><span class="n">ok</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">200</span><span class="p">}},</span>
+              <span class="nv">EncodedOK</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">OK</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedOK</span><span class="p">,</span>
+                               <span class="nv">Req1</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">partial</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">partial</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">Req1</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">timeout</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">408</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">408</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">Req1</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reasons</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="nv">Reasons</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">Req1</span><span class="p">)</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">ReqOut</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">init</span><span class="p">(</span><span class="nv">ReqIn</span> <span class="o">=</span> <span class="p">#{</span><span class="n">method</span> <span class="p">:</span><span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;DELETE&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">Key</span> <span class="o">=</span> <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">binding</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nv">ReqIn</span><span class="p">),</span>
+    <span class="nv">ReqOut</span> <span class="o">=</span>
+        <span class="k">case</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nf">delete</span><span class="p">(</span><span class="nv">Key</span><span class="p">)</span> <span class="k">of</span>
+          <span class="n">ok</span> <span class="o">-&gt;</span>
+              <span class="nv">OK</span> <span class="o">=</span> <span class="p">#{</span><span class="n">ok</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">200</span><span class="p">}},</span>
+              <span class="nv">EncodedOK</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">OK</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedOK</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">partial</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">partial</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">timeout</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">408</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">408</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reasons</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="nv">Reasons</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">)</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">ReqOut</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">init</span><span class="p">(</span><span class="nv">ReqIn</span> <span class="o">=</span> <span class="p">#{</span><span class="n">method</span> <span class="p">:</span><span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;GET&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">Key</span> <span class="o">=</span> <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">binding</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nv">ReqIn</span><span class="p">),</span>
+    <span class="nv">ReqOut</span> <span class="o">=</span>
+        <span class="k">case</span> <span class="nn">rclref_client</span><span class="p">:</span><span class="nb">get</span><span class="p">(</span><span class="nv">Key</span><span class="p">)</span> <span class="k">of</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Values</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Data</span> <span class="o">=</span> <span class="p">#{</span><span class="n">ok</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">values</span> <span class="o">=&gt;</span> <span class="nv">Values</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">200</span><span class="p">}},</span>
+              <span class="nv">EncodedData</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Data</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedData</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">not_found</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">not_found</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">404</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">partial</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">partial</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">timeout</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">408</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">408</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">);</span>
+          <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reasons</span><span class="p">}</span> <span class="o">-&gt;</span>
+              <span class="nv">Error</span> <span class="o">=</span> <span class="p">#{</span><span class="n">error</span> <span class="o">=&gt;</span> <span class="p">#{</span><span class="n">reason</span> <span class="o">=&gt;</span> <span class="nv">Reasons</span><span class="p">,</span> <span class="n">code</span> <span class="o">=&gt;</span> <span class="mi">500</span><span class="p">}},</span>
+              <span class="nv">EncodedError</span> <span class="o">=</span> <span class="nn">jsx</span><span class="p">:</span><span class="nf">encode</span><span class="p">(</span><span class="nv">Error</span><span class="p">,</span> <span class="p">[{</span><span class="n">space</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="n">indent</span><span class="p">,</span> <span class="mi">2</span><span class="p">}]),</span>
+              <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">reply</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span>
+                               <span class="p">#{</span><span class="o">&lt;&lt;</span><span class="s">&quot;content-type&quot;</span><span class="o">&gt;&gt;</span> <span class="o">=&gt;</span> <span class="o">&lt;&lt;</span><span class="s">&quot;application/json&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
+                               <span class="nv">EncodedError</span><span class="p">,</span>
+                               <span class="nv">ReqIn</span><span class="p">)</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">ReqOut</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">read_all_body</span><span class="p">(</span><span class="nv">ReqIn</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="n">read_all_body</span><span class="p">(</span><span class="nv">ReqIn</span><span class="p">,</span> <span class="o">&lt;&lt;&gt;&gt;</span><span class="p">).</span>
+
+<span class="nf">read_all_body</span><span class="p">(</span><span class="nv">Req0</span><span class="p">,</span> <span class="nv">Acc</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nn">cowboy_req</span><span class="p">:</span><span class="nf">read_body</span><span class="p">(</span><span class="nv">Req0</span><span class="p">)</span> <span class="k">of</span>
+      <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Data</span><span class="p">,</span> <span class="nv">Req</span><span class="p">}</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="o">&lt;&lt;</span><span class="nv">Acc</span><span class="o">/</span><span class="n">binary</span><span class="p">,</span> <span class="nv">Data</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="nv">Req</span><span class="p">};</span>
+      <span class="p">{</span><span class="n">more</span><span class="p">,</span> <span class="nv">Data</span><span class="p">,</span> <span class="nv">Req</span><span class="p">}</span> <span class="o">-&gt;</span>
+          <span class="n">read_all_body</span><span class="p">(</span><span class="nv">Req</span><span class="p">,</span> <span class="o">&lt;&lt;</span><span class="nv">Acc</span><span class="o">/</span><span class="n">binary</span><span class="p">,</span> <span class="nv">Data</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">)</span>
+    <span class="k">end</span><span class="p">.</span>
+</code></pre></div>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="https://unpkg.com/mermaid@8.0.0/dist/mermaid.min.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

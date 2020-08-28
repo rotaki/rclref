@@ -75,9 +75,13 @@
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="./">Other</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#what-are-vector-clocks">What are vector clocks?</a>
+    <li class="toctree-l2"><a class="reference internal" href="#how-to-configure-rclref">How to configure rclref?</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#how-to-completely-delete-a-key-value-from-backend">How to completely delete a key-value from backend?</a>
+    <li class="toctree-l2"><a class="reference internal" href="#how-are-vector-clocks-implemented">How are vector clocks implemented?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-to-delete-a-tombstone-from-backend">How to delete a tombstone from backend?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#more-information-on-riak_core">More information on riak_core</a>
     </li>
     </ul>
                     </li>
@@ -116,8 +120,60 @@
               
                 <h1 id="other">Other</h1>
 <p>This page provides information on stuff that has not been explained in other pages.</p>
-<h2 id="what-are-vector-clocks">What are vector clocks?</h2>
-<h2 id="how-to-completely-delete-a-key-value-from-backend">How to completely delete a key-value from backend?</h2>
+<h2 id="how-to-configure-rclref">How to configure rclref?</h2>
+<p>Configuring rclref is done in mostly in <code>rclref.app.src</code>. Environemntal values are defined in this module.
+In order to check bugs in the config as earily as possible, environmental values are read using the <code>rclref_config</code> module.</p>
+<h2 id="how-are-vector-clocks-implemented">How are vector clocks implemented?</h2>
+<p>Please read the <a href="https://en.wikipedia.org/wiki/Vector_clock">wiki</a> if you don't know what vector clocks do.</p>
+<p>When a client on node1 requests to put a new key-value in the database, a vector clock <code>[{node1, 1}]</code> will be created and stored together with the value.
+Then if another client on node2 requests to put a value on the same key, the vector clock will be updated to <code>[{node1, 1}, {node2, 1}]</code> and stored together with the new value.</p>
+<p>These vector clock operations are implemeted in the <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_object.erl"><code>rclref_object.erl</code></a> module using the <a href="https://github.com/AntidoteDB/vectorclock">vector clock library</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">spec</span> <span class="n">new_vclock</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">vclock</span><span class="p">().</span>
+<span class="nf">new_vclock</span><span class="p">()</span> <span class="o">-&gt;</span>
+    <span class="nn">vectorclock</span><span class="p">:</span><span class="nf">new</span><span class="p">().</span>
+
+<span class="p">-</span><span class="ni">spec</span> <span class="n">increment_vclock</span><span class="p">(</span><span class="nb">node</span><span class="p">(),</span> <span class="n">vclock</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">vclock</span><span class="p">().</span>
+<span class="nf">increment_vclock</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">VClock</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nn">vectorclock</span><span class="p">:</span><span class="nf">update_with</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span>
+                            <span class="k">fun</span> <span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
+                                    <span class="nv">X</span> <span class="o">+</span> <span class="mi">1</span>
+                            <span class="k">end</span><span class="p">,</span>
+                            <span class="mi">1</span><span class="p">,</span>
+                            <span class="nv">VClock</span><span class="p">).</span>
+</code></pre></div>
+
+<p>It is not always the case, however, that there is an order between two vector clocks. For example, <code>[{node1, 2}, {node2, 1}]</code> and <code>[{node1, 1}, {node2, 2}]</code> have no orders between them.  When updates happen concurrently, there is no causality between the two. On such occastion, it is necessary to have a strategy to merge two objects or a heuristic to select one from them or a strategy for not dealing with the conflict i.e. simply return two different values so that the client can resolve the conflict. </p>
+<p>In rclref, no heuristics were implemented for selecting the value on concurrent updates. For simplicity, when concurrent updates happen, it just chooses either of the values. This is implemented in the merge function in <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_object.erl"><code>rclref_object.erl</code></a> module.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">spec</span> <span class="n">merge</span><span class="p">([</span><span class="n">riak_object</span><span class="p">()])</span> <span class="o">-&gt;</span> <span class="n">riak_object</span><span class="p">().</span>
+<span class="nf">merge</span><span class="p">([</span><span class="nv">RObj</span><span class="p">])</span> <span class="o">-&gt;</span>
+    <span class="nv">RObj</span><span class="p">;</span>
+<span class="nf">merge</span><span class="p">([</span><span class="nv">RObj0</span><span class="p">,</span> <span class="nv">RObj1</span> <span class="p">|</span> <span class="nv">RObjs</span><span class="p">])</span> <span class="o">-&gt;</span>
+    <span class="nv">VClock0</span> <span class="o">=</span> <span class="n">vclock</span><span class="p">(</span><span class="nv">RObj0</span><span class="p">),</span>
+    <span class="nv">VClock1</span> <span class="o">=</span> <span class="n">vclock</span><span class="p">(</span><span class="nv">RObj1</span><span class="p">),</span>
+    <span class="nv">NewRObj</span> <span class="o">=</span>
+        <span class="k">case</span> <span class="nn">vectorclock</span><span class="p">:</span><span class="nf">le</span><span class="p">(</span><span class="nv">VClock0</span><span class="p">,</span> <span class="nv">VClock1</span><span class="p">)</span> <span class="k">of</span>
+          <span class="n">true</span> <span class="o">-&gt;</span>
+              <span class="nv">RObj1</span><span class="p">;</span>
+          <span class="n">false</span> <span class="o">-&gt;</span>
+              <span class="nv">RObj0</span>
+        <span class="k">end</span><span class="p">,</span>
+    <span class="n">merge</span><span class="p">([</span><span class="nv">NewRObj</span><span class="p">]</span> <span class="o">++</span> <span class="nv">RObjs</span><span class="p">).</span>
+</code></pre></div>
+
+<h2 id="how-to-delete-a-tombstone-from-backend">How to delete a tombstone from backend?</h2>
+<p>Tombstone is a key-value which has an undefined value. 
+Tombstone is created when a client request a delete on a Key because delete request is internally converetd into a put request with key=Key, value=undefined. Tombstones are not transparent to the user but you can see them using the coverage calls in LowLevelAPI such as <code>rclref:list_all_objects()</code>.</p>
+<p>The LowLevelAPI also provides a method to delete the tombstone completely from the backend which is <code>rclref:reap(Key)</code>. This function should only be used when the connection between nodes is stable otherwise the deleted value might resurrect.</p>
+<h2 id="more-information-on-riak_core">More information on riak_core</h2>
+<p>These are websites that explains how to create riak_core applicaiton.
+Note that riak_core and riak_core_lite has some differences e.g. coverage calls.</p>
+<ul>
+<li><a href="https://github.com/basho/riak_core/wiki">Riak Core wiki</a></li>
+<li><a href="https://github.com/lambdaclass/riak_core_tutorial">Riak Core Tutorial: lambda class</a></li>
+<li><a href="https://marianoguerra.github.io/riak-core-tutorial/">Riak Core Tutorial: Mariano Guerra</a></li>
+<li><a href="http://efcasado.github.io/">A Gentle Introduction to Riak Core: Enrique Fernandez</a></li>
+<li><a href="https://github.com/rzezeski/try-try-try/tree/master/2011">TryTryTry</a></li>
+</ul>
               
             </div>
           </div>
