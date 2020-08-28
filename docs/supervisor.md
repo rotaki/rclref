@@ -144,5 +144,89 @@ reqid() ->
     erlang:phash2(erlang:monotonic_time()).
 ```
 
-The important function in the snippet above is the `start_put_statem/1`. This function will be called by the LowLevelAPI to start up the coordinator 
+The important function in the snippet above is the `start_put_statem/1`. This function will be called by the LowLevelAPI on request from the client.
+ This will return a unique id to the client so that the client can distinguish the responses from the coordinator.
+ 
+## get supervisor
 
+A get supervisor is defined in [`rclref_get_statem_sup.erl`](https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_get_statem_sup.erl)
+
+```erlang
+-module(rclref_get_statem_sup).
+
+-behaviour(supervisor).
+
+-export([start_get_statem/1, stop_get_statem/1, start_link/0]).
+-export([init/1]).
+
+-spec start_get_statem([term()]) -> {ok, undefined} | {ok, non_neg_integer()}.
+start_get_statem(Args) ->
+    ReqId = reqid(),
+    {ok, _} = supervisor:start_child(?MODULE, [[ReqId] ++ Args]),
+    {ok, ReqId}.
+
+-spec stop_get_statem(pid()) -> ok.
+stop_get_statem(Pid) ->
+    ok = supervisor:terminate_child(?MODULE, Pid),
+    ok = supervisor:delete_child(?MODULE, Pid).
+
+-spec start_link() -> {ok, pid()}.
+start_link() ->
+    {ok, _} = supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+% Callbacks
+init([]) ->
+    GetStatem =
+        {undefined,
+         {rclref_get_statem, start_link, []},
+         temporary,
+         5000,
+         worker,
+         [rclref_put_statem]},
+    {ok, {{simple_one_for_one, 10, 10}, [GetStatem]}}.
+
+% Internal Functions
+-spec reqid() -> non_neg_integer().
+reqid() ->
+    erlang:phash2(erlang:monotonic_time()).
+```
+ 
+## coverage call supervisor
+
+A coverage call supervisor is defined in [`rclref_coverage_fsm_sup.erl`](https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_coverage_call_sup.erl)
+
+```erlang
+-module(rclref_coverage_fsm_sup).
+
+-behaviour(supervisor).
+
+-export([start_link/0, start_coverage_fsm/1, stop_coverage_fsm/1]).
+-export([init/1]).
+
+start_coverage_fsm(Args) ->
+    ReqId = reqid(),
+    {ok, _} = supervisor:start_child(?MODULE, [[ReqId] ++ Args]),
+    {ok, ReqId}.
+
+stop_coverage_fsm(Pid) ->
+    ok = supervisor:terminate_child(?MODULE, Pid),
+    ok = supervisor:delete_child(?MODULE, Pid).
+
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+init([]) ->
+    CoverageFsm =
+        {undefined,
+         {rclref_coverage_fsm, start_link, []},
+         temporary,
+         5000,
+         worker,
+         [rclref_coverage_fsm]},
+    {ok, {{simple_one_for_one, 10, 10}, [CoverageFsm]}}.
+
+% Internal Functions
+-spec reqid() -> non_neg_integer().
+reqid() ->
+    erlang:phash2(erlang:monotonic_time()).
+```

@@ -1,7 +1,12 @@
 # How to actually use rclref?
 
 This page descirbes how to use rclref as a key-value store.
-First start the application by `make`, `make console`.
+First start the application by 
+
+```sh
+make
+make console
+```
 
 ## UserAPI
 

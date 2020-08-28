@@ -27,6 +27,7 @@ Backend3 --> Vnode3
 Coordinator -right-> LowLevelAPI
 LowLevelAPI -up-> UserAPI
 
+
 UserAPI: rclref_client.erl
 LowLevelAPI: rclref.erl
 Supervisor: rclref_get_statem_sup.erl
@@ -79,7 +80,7 @@ In order to make a generic backend that can support storages engines like `ets` 
 
 ## ETS backend
 
-After implementing `rclref_backend.erl`, we need to implement an actual backend that utilizes this behaviour. [`rclref_ets_backend.erl`](https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_ets_backend.erl) sample implementation using Erlang Term Storage (ets) is given in the following snippet.
+After implementing `rclref_backend.erl`, we need to implement an actual backend that utilizes this behaviour. [`rclref_ets_backend.erl`](https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_ets_backend.erl) is a sample implementation of a backend using Erlang Term Storage (ets).
 
 
 ```erlang
