@@ -18,9 +18,9 @@
   {mod, { rclref_app, []}},
   {env, [{storage_backend, ets},
          {merge_strategy, none},
-         {n_val, 5},
-         {r_val, 3}, % n_val >= r_val >= n_val/2
-         {w_val, 3}, % n_val >= w_val >= n_val/2
+         {n_val, 3},
+         {r_val, 1}, % n_val >= r_val >= n_val/2
+         {w_val, 1}, % n_val >= w_val >= n_val/2
          {timeout_put, 20000},
          {timeout_get, 20000},
          {timeout_coverage, infinity},
