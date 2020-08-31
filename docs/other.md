@@ -65,8 +65,8 @@ The LowLevelAPI also provides a method to delete the tombstone completely from t
 1. Remove riak_core_lite and riak_core_lite_utils from rebar.config
 2. Add riak_core as dependency.
 3. Make a _checkouts directory in rclref. Clone riak_core into that and checkout branch develop-3.0
-4. Comment riak_core_coverage_fsm.erl and riak_core_coverage_plan.erl out
-5.  Add riak_core.schema to dir _build/dev1/rel/rclref/lib manually
+4. Comment `riak_core_coverage_fsm.erl` and `riak_core_coverage_plan.erl` out
+5. Add `riak_core.schema` to dir _build/dev1/rel/rclref/lib manually
 6. Use at most Erlang 22
 
 ## More information on riak_core
