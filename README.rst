@@ -28,6 +28,9 @@ Run
 Try
 ---
 
+
+Erlang interface (replication = 3)
+
 ::
 
     1> rclref_client:put(<<"dog">>, <<"cat">>).
@@ -44,7 +47,6 @@ Try
 
     5> rclref_client:get(<<"dog">>).
     {error,not_found}
-
 
 
 More information:
