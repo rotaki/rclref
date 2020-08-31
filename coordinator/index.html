@@ -132,6 +132,277 @@
 <p>If R is small, it results in better throughput for get request. This, however, means that the reliability of the data is comparatively low because it will only wait for a partial number of vnodes to respond.</p>
 <p>If W is small, it results in better throughput for put request. This, however, means that the reliability of the put has succeeded is comparatively low because it will only wait for a partial number of vnodes to respond.</p>
 <h2 id="implementation-details">Implementation details</h2>
+<p>There are 3 coordinators in rclref: <code>rclref_put_statem.erl</code>, <code>rclref_get_statem.erl</code>, <code>rclref_coverage_fsm</code>.</p>
+<h3 id="put-coordinator">put coordinator</h3>
+<p>A put coordinator is in <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_put_statem.erl"><code>rclref_put_statem.erl</code></a>.
+This is implemented using gen_statem behaviour with 1 main state, which is waiting.</p>
+<p>On initialize, it will send the put request to N vnodes.
+Then in the waiting state, it will wait for either of the condition holds.</p>
+<ul>
+<li>W vnodes respond with ok</li>
+<li>N-W vnodes respond with errror</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c">% State function</span>
+<span class="c">% WAITING STATE will wait for the responses from vnodes until</span>
+<span class="c">% When a vnode return {ok, RObj}</span>
+<span class="nf">waiting</span><span class="p">(</span><span class="n">cast</span><span class="p">,</span>
+        <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">RObj</span><span class="p">},</span>
+        <span class="nv">State</span> <span class="o">=</span>
+            <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span>
+                   <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">ClientPid</span><span class="p">,</span>
+                   <span class="n">w_val</span> <span class="o">=</span> <span class="nv">W</span><span class="p">,</span>
+                   <span class="n">num_ok</span> <span class="o">=</span> <span class="nv">NumOk0</span><span class="p">,</span>
+                   <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs0</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="c">% Update State</span>
+    <span class="nv">RObjs</span> <span class="o">=</span> <span class="p">[</span><span class="nv">RObj</span><span class="p">]</span> <span class="o">++</span> <span class="nv">RObjs0</span><span class="p">,</span>
+    <span class="nv">NumOk</span> <span class="o">=</span> <span class="nv">NumOk0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="nv">NewState</span> <span class="o">=</span> <span class="nv">State</span><span class="nl">#state</span><span class="p">{</span><span class="n">num_ok</span> <span class="o">=</span> <span class="nv">NumOk</span><span class="p">,</span> <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs</span><span class="p">},</span>
+
+    <span class="c">% When more than or equal to W vnodes responded with {ok, RObj}, return W RObjs to client</span>
+    <span class="k">case</span> <span class="nv">NumOk</span> <span class="o">&gt;=</span> <span class="nv">W</span> <span class="k">of</span>
+      <span class="n">true</span> <span class="o">-&gt;</span>
+          <span class="nv">ClientPid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">RObjs</span><span class="p">}},</span>
+          <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">};</span>
+      <span class="n">false</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">;</span>
+<span class="c">% When a vnode return {error, VnodeError}</span>
+<span class="nf">waiting</span><span class="p">(</span><span class="n">cast</span><span class="p">,</span>
+        <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">VnodeError</span><span class="p">},</span>
+        <span class="nv">State</span> <span class="o">=</span>
+            <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span>
+                   <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">ClientPid</span><span class="p">,</span>
+                   <span class="n">n_val</span> <span class="o">=</span> <span class="nv">N</span><span class="p">,</span>
+                   <span class="n">w_val</span> <span class="o">=</span> <span class="nv">W</span><span class="p">,</span>
+                   <span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span><span class="p">,</span>
+                   <span class="n">vnode_errors</span> <span class="o">=</span> <span class="nv">VnodeErrors0</span><span class="p">,</span>
+                   <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs0</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="c">% Update State</span>
+    <span class="nv">NumVnodeError</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="nv">VnodeErrors</span> <span class="o">=</span> <span class="p">[</span><span class="nv">VnodeError</span><span class="p">]</span> <span class="o">++</span> <span class="nv">VnodeErrors0</span><span class="p">,</span>
+    <span class="nv">NewState</span> <span class="o">=</span> <span class="nv">State</span><span class="nl">#state</span><span class="p">{</span><span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError</span><span class="p">,</span> <span class="n">vnode_errors</span> <span class="o">=</span> <span class="nv">VnodeErrors</span><span class="p">},</span>
+
+    <span class="c">% When more than (N-W) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client</span>
+    <span class="k">case</span> <span class="nv">NumVnodeError</span> <span class="o">&gt;</span> <span class="nv">N</span> <span class="o">-</span> <span class="nv">W</span> <span class="k">of</span>
+      <span class="n">true</span> <span class="o">-&gt;</span>
+          <span class="nv">ClientPid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">RObjs0</span><span class="p">},</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">VnodeErrors</span><span class="p">}}},</span>
+          <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">};</span>
+      <span class="n">false</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">;</span>
+<span class="nf">waiting</span><span class="p">(</span><span class="n">state_timeout</span><span class="p">,</span>
+        <span class="n">hard_stop</span><span class="p">,</span>
+        <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">ClientPid</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nv">ClientPid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="n">timeout</span><span class="p">}},</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">waiting_timed_out</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">waiting</span><span class="p">(_</span><span class="nv">EventType</span><span class="p">,</span> <span class="p">_</span><span class="nv">EventContent</span><span class="p">,</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{})</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+</code></pre></div>
+
+<h3 id="get-coordinator">get coordinator</h3>
+<p>A get coordinator is in <a href="https://github.com/wattlebirdaz/rclref/blob/master/apps/rclref/src/rclref_get_statem.erl"><code>rclref_get_statem</code></a>.
+It is also implemented using gen_statem behaviour which has two main states, waiting and finalize.</p>
+<p>On initialize, the get coordinator will send the get requests to N vnodes.
+Then in the waiting state, it wait until either of the conditions holds.</p>
+<ul>
+<li>R vnodes respond with a valid value</li>
+<li>N-R vnodes respond with an error</li>
+</ul>
+<p>After the waiting state, it will transit to the finalize state where it repairs the values of the vnodes with broken data.
+In transit state, the get coordinator will first wait for N vnodes to respond and then compute the latest value using the vector clocks of the valid values it has received.
+Then, it will send this latest value to the vnodes which did not respond with a valid value.
+This is called <strong>read_repair</strong> and you can read more about it <a href="https://docs.riak.com/riak/kv/2.2.3/learn/concepts/replication.1.html#read-repair">here</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="c">% FINALIZE STATE will wait for ?N vnodes to return response and then issue read_pair</span>
+<span class="c">% When a vnode returns {ok, RObj}</span>
+<span class="nf">finalize</span><span class="p">(</span><span class="n">cast</span><span class="p">,</span>
+         <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">RObj</span><span class="p">},</span>
+         <span class="nv">State</span> <span class="o">=</span>
+             <span class="nl">#state</span><span class="p">{</span><span class="n">n_val</span> <span class="o">=</span> <span class="nv">N</span><span class="p">,</span>
+                    <span class="n">num_ok</span> <span class="o">=</span> <span class="nv">NumOk0</span><span class="p">,</span>
+                    <span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span><span class="p">,</span>
+                    <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs0</span><span class="p">,</span>
+                    <span class="n">undefined_objects</span> <span class="o">=</span> <span class="nv">UObjs0</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="c">% Update State</span>
+    <span class="k">case</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">value</span><span class="p">(</span><span class="nv">RObj</span><span class="p">)</span> <span class="k">of</span>
+      <span class="n">undefined</span> <span class="o">-&gt;</span>
+          <span class="nv">NumVnodeError</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+          <span class="nv">UObjs</span> <span class="o">=</span> <span class="nv">UObjs0</span> <span class="o">++</span> <span class="p">[</span><span class="nv">RObj</span><span class="p">],</span>
+          <span class="nv">NumOk</span> <span class="o">=</span> <span class="nv">NumOk0</span><span class="p">,</span>
+          <span class="nv">RObjs</span> <span class="o">=</span> <span class="nv">RObjs0</span><span class="p">;</span>
+      <span class="p">_</span> <span class="o">-&gt;</span>
+          <span class="nv">NumVnodeError</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span><span class="p">,</span>
+          <span class="nv">UObjs</span> <span class="o">=</span> <span class="nv">UObjs0</span><span class="p">,</span>
+          <span class="nv">NumOk</span> <span class="o">=</span> <span class="nv">NumOk0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+          <span class="nv">RObjs</span> <span class="o">=</span> <span class="nv">RObjs0</span> <span class="o">++</span> <span class="p">[</span><span class="nv">RObj</span><span class="p">]</span>
+    <span class="k">end</span><span class="p">,</span>
+
+    <span class="nv">NewState</span> <span class="o">=</span>
+        <span class="nv">State</span><span class="nl">#state</span><span class="p">{</span><span class="n">num_ok</span> <span class="o">=</span> <span class="nv">NumOk</span><span class="p">,</span>
+                    <span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError</span><span class="p">,</span>
+                    <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs</span><span class="p">,</span>
+                    <span class="n">undefined_objects</span> <span class="o">=</span> <span class="nv">UObjs</span><span class="p">},</span>
+
+    <span class="c">% When all ?N vnodes has responded, do read_repair</span>
+    <span class="k">case</span> <span class="nv">NumOk</span> <span class="o">+</span> <span class="nv">NumVnodeError</span> <span class="o">&gt;=</span> <span class="nv">N</span> <span class="k">of</span>
+      <span class="n">true</span> <span class="o">-&gt;</span>
+          <span class="nv">MergedRObj</span> <span class="o">=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">merge</span><span class="p">(</span><span class="nv">RObjs</span> <span class="o">++</span> <span class="nv">UObjs</span><span class="p">),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="n">repair</span><span class="p">(</span><span class="nv">MergedRObj</span><span class="p">,</span> <span class="nv">N</span><span class="p">,</span> <span class="nv">RObjs</span> <span class="o">++</span> <span class="nv">UObjs</span><span class="p">),</span>
+          <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">};</span>
+      <span class="n">false</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">;</span>
+<span class="c">% When a vnode returns {error, VnodeError}</span>
+<span class="nf">finalize</span><span class="p">(</span><span class="n">cast</span><span class="p">,</span>
+         <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">VnodeError</span><span class="p">},</span>
+         <span class="nv">State</span> <span class="o">=</span>
+             <span class="nl">#state</span><span class="p">{</span><span class="n">n_val</span> <span class="o">=</span> <span class="nv">N</span><span class="p">,</span>
+                    <span class="n">num_ok</span> <span class="o">=</span> <span class="nv">NumOk0</span><span class="p">,</span>
+                    <span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span><span class="p">,</span>
+                    <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs0</span><span class="p">,</span>
+                    <span class="n">undefined_objects</span> <span class="o">=</span> <span class="nv">UObjs0</span><span class="p">,</span>
+                    <span class="n">vnode_errors</span> <span class="o">=</span> <span class="nv">VnodeErrors0</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="c">% Update Satte</span>
+    <span class="nv">NumVnodeError</span> <span class="o">=</span> <span class="nv">NumVnodeError0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="nv">VnodeErrors</span> <span class="o">=</span> <span class="nv">VnodeErrors0</span> <span class="o">++</span> <span class="p">[</span><span class="nv">VnodeError</span><span class="p">],</span>
+    <span class="nv">NewState</span> <span class="o">=</span> <span class="nv">State</span><span class="nl">#state</span><span class="p">{</span><span class="n">num_vnode_error</span> <span class="o">=</span> <span class="nv">NumVnodeError</span><span class="p">,</span> <span class="n">vnode_errors</span> <span class="o">=</span> <span class="nv">VnodeErrors</span><span class="p">},</span>
+
+    <span class="c">% When all ?N vnodes has responded, do read_repair</span>
+    <span class="k">case</span> <span class="nv">NumOk0</span> <span class="o">+</span> <span class="nv">NumVnodeError</span> <span class="o">&gt;=</span> <span class="nv">N</span> <span class="k">of</span>
+      <span class="n">true</span> <span class="o">-&gt;</span>
+          <span class="k">case</span> <span class="nv">RObjs0</span> <span class="o">++</span> <span class="nv">UObjs0</span> <span class="k">of</span>
+            <span class="c">% When any of the vnodes responded with {ok, RObj}, do not issue read_repair</span>
+            <span class="p">[]</span> <span class="o">-&gt;</span>
+                <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">};</span>
+            <span class="p">_</span> <span class="o">-&gt;</span>
+                <span class="nv">MergedRObj</span> <span class="o">=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">merge</span><span class="p">(</span><span class="nv">RObjs0</span> <span class="o">++</span> <span class="nv">UObjs0</span><span class="p">),</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="n">repair</span><span class="p">(</span><span class="nv">MergedRObj</span><span class="p">,</span> <span class="nv">N</span><span class="p">,</span> <span class="nv">RObjs0</span> <span class="o">++</span> <span class="nv">UObjs0</span><span class="p">),</span>
+                <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">}</span>
+          <span class="k">end</span><span class="p">;</span>
+      <span class="n">false</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">NewState</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">;</span>
+<span class="c">% When finalize state timeouts, issue a read_repair</span>
+<span class="nf">finalize</span><span class="p">(</span><span class="n">state_timeout</span><span class="p">,</span>
+         <span class="n">hard_stop</span><span class="p">,</span>
+         <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">n_val</span> <span class="o">=</span> <span class="nv">N</span><span class="p">,</span> <span class="n">riak_objects</span> <span class="o">=</span> <span class="nv">RObjs</span><span class="p">,</span> <span class="n">undefined_objects</span> <span class="o">=</span> <span class="nv">UObjs</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="k">case</span> <span class="nv">RObjs</span> <span class="o">++</span> <span class="nv">UObjs</span> <span class="k">of</span>
+      <span class="p">[]</span> <span class="o">-&gt;</span>
+          <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+      <span class="p">_</span> <span class="o">-&gt;</span>
+          <span class="nv">MergedRObj</span> <span class="o">=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">merge</span><span class="p">(</span><span class="nv">RObjs</span> <span class="o">++</span> <span class="nv">UObjs</span><span class="p">),</span>
+          <span class="n">ok</span> <span class="o">=</span> <span class="n">repair</span><span class="p">(</span><span class="nv">MergedRObj</span><span class="p">,</span> <span class="nv">N</span><span class="p">,</span> <span class="nv">RObjs</span> <span class="o">++</span> <span class="nv">UObjs</span><span class="p">),</span>
+          <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">}</span>
+    <span class="k">end</span><span class="p">;</span>
+<span class="nf">finalize</span><span class="p">(_</span><span class="nv">EventType</span><span class="p">,</span> <span class="p">_</span><span class="nv">EventContent</span><span class="p">,</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{})</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">keep_state</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="c">% Use RObj to repair vnodes with different content (i.e Value, VClock)</span>
+<span class="nf">repair</span><span class="p">(</span><span class="nv">RObj</span><span class="p">,</span> <span class="nv">N</span><span class="p">,</span> <span class="nv">RObjs</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">Key</span> <span class="o">=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">key</span><span class="p">(</span><span class="nv">RObj</span><span class="p">),</span>
+    <span class="nv">Content</span> <span class="o">=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">content</span><span class="p">(</span><span class="nv">RObj</span><span class="p">),</span>
+    <span class="c">% Exclude repairing of vnodes that has the same content</span>
+    <span class="nv">OkNodesIndexes</span> <span class="o">=</span>
+        <span class="p">[{</span><span class="nn">rclref_object</span><span class="p">:</span><span class="nf">partition</span><span class="p">(</span><span class="nv">X</span><span class="p">),</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nb">node</span><span class="p">(</span><span class="nv">X</span><span class="p">)}</span>
+         <span class="p">||</span> <span class="nv">X</span> <span class="o">&lt;-</span> <span class="nv">RObjs</span><span class="p">,</span> <span class="nv">Key</span> <span class="o">=:=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">key</span><span class="p">(</span><span class="nv">X</span><span class="p">),</span> <span class="nv">Content</span> <span class="o">=:=</span> <span class="nn">rclref_object</span><span class="p">:</span><span class="nf">content</span><span class="p">(</span><span class="nv">X</span><span class="p">)],</span>
+    <span class="nv">DocIdx</span> <span class="o">=</span> <span class="nn">riak_core_util</span><span class="p">:</span><span class="nf">chash_key</span><span class="p">({</span><span class="nv">Key</span><span class="p">,</span> <span class="n">undefined</span><span class="p">}),</span>
+    <span class="nv">PrefList</span> <span class="o">=</span> <span class="nn">riak_core_apl</span><span class="p">:</span><span class="nf">get_primary_apl</span><span class="p">(</span><span class="nv">DocIdx</span><span class="p">,</span> <span class="nv">N</span><span class="p">,</span> <span class="n">rclref</span><span class="p">),</span>
+    <span class="nn">lists</span><span class="p">:</span><span class="nf">foreach</span><span class="p">(</span><span class="k">fun</span> <span class="p">({</span><span class="nv">IndexNode</span><span class="p">,</span> <span class="p">_})</span> <span class="o">-&gt;</span>
+                          <span class="k">case</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">member</span><span class="p">(</span><span class="nv">IndexNode</span><span class="p">,</span> <span class="nv">OkNodesIndexes</span><span class="p">)</span> <span class="k">of</span>
+                            <span class="n">false</span> <span class="o">-&gt;</span>
+                                <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Sending repair RObj: </span><span class="si">~p</span><span class="s"> to IndexNode: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span>
+                                            <span class="p">[</span><span class="nv">RObj</span><span class="p">,</span> <span class="nv">IndexNode</span><span class="p">]),</span>
+                                <span class="nn">riak_core_vnode_master</span><span class="p">:</span><span class="nf">command</span><span class="p">(</span><span class="nv">IndexNode</span><span class="p">,</span>
+                                                               <span class="p">{</span><span class="n">repair_request</span><span class="p">,</span> <span class="nv">RObj</span><span class="p">},</span>
+                                                               <span class="n">rclref_vnode_master</span><span class="p">);</span>
+                            <span class="p">_</span> <span class="o">-&gt;</span>
+                                <span class="n">ok</span>
+                          <span class="k">end</span>
+                  <span class="k">end</span><span class="p">,</span>
+                  <span class="nv">PrefList</span><span class="p">),</span>
+    <span class="n">ok</span><span class="p">.</span>
+</code></pre></div>
+
+<h3 id="coverage-coordinator">coverage coordinator</h3>
+<p>The coverage coordinator is implmeneted using <code>riak_core_coverage_fsm</code> behaviour.
+In rclref, there are two types of coverage calls.</p>
+<ol>
+<li>
+<p>unique
+This coverage call will request for one replica per key. This means that the coverage plan aims to send the request to a minimum number of vnode which can cover all the unique keys existing in the backend.</p>
+</li>
+<li>
+<p>all
+This coverage call will request for all replicas per key. This means that the coverage plan aims to send the request to <strong>ALL</strong> the vnodes which is compuationally very expensive.</p>
+</li>
+</ol>
+<p>You can see the difference between them in the return value of the <code>init</code> funciton. Read <a href="https://github.com/lambdaclass/riak_core_tutorial#6-coverage-commands">this page</a> for more details.</p>
+<div class="highlight"><pre><span></span><code><span class="p">-</span><span class="ni">module</span><span class="p">(</span><span class="n">rclref_coverage_fsm</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">behaviour</span><span class="p">(</span><span class="n">riak_core_coverage_fsm</span><span class="p">).</span>
+
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">start_link</span><span class="o">/</span><span class="mi">1</span><span class="p">]).</span>
+<span class="p">-</span><span class="ni">export</span><span class="p">([</span><span class="n">init</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">process_results</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">finish</span><span class="o">/</span><span class="mi">2</span><span class="p">]).</span>
+
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">N</span><span class="p">,</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">n_val</span><span class="p">()).</span>
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">W</span><span class="p">,</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">w_val</span><span class="p">()).</span>
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">R</span><span class="p">,</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">r_val</span><span class="p">()).</span>
+<span class="p">-</span><span class="ni">define</span><span class="p">(</span><span class="no">TIMEOUT_COVERAGE</span><span class="p">,</span> <span class="nn">rclref_config</span><span class="p">:</span><span class="nf">timeout_coverage</span><span class="p">()).</span>
+
+<span class="p">-</span><span class="ni">record</span><span class="p">(</span><span class="nl">state</span><span class="p">,</span> <span class="p">{</span><span class="n">req_id</span><span class="p">,</span> <span class="n">client_pid</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="p">[]}).</span>
+
+<span class="nf">start_link</span><span class="p">([</span><span class="nv">ReqId</span><span class="p">,</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="p">_</span><span class="nv">Client_Node</span><span class="p">,</span> <span class="nv">Request</span><span class="p">,</span> <span class="nv">Options</span><span class="p">])</span> <span class="o">-&gt;</span>
+    <span class="nv">Timeout</span> <span class="o">=</span> <span class="nn">proplists</span><span class="p">:</span><span class="nf">get_value</span><span class="p">(</span><span class="n">timeout</span><span class="p">,</span> <span class="nv">Options</span><span class="p">,</span> <span class="o">?</span><span class="nv">TIMEOUT_COVERAGE</span><span class="p">),</span>
+    <span class="nn">riak_core_coverage_fsm</span><span class="p">:</span><span class="nf">start_link</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="p">{</span><span class="n">pid</span><span class="p">,</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="nv">Client_Pid</span><span class="p">},</span> <span class="p">[</span><span class="nv">Request</span><span class="p">,</span> <span class="nv">Timeout</span><span class="p">]).</span>
+
+<span class="c">% Callbacks</span>
+<span class="c">% Client_Pid: Pid, Client_Node: Node</span>
+<span class="nf">init</span><span class="p">({</span><span class="n">pid</span><span class="p">,</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="nv">Client_Pid</span><span class="p">},</span> <span class="p">[</span><span class="nv">Request</span> <span class="o">=</span> <span class="p">{</span><span class="n">unique</span><span class="p">,</span> <span class="p">_},</span> <span class="nv">Timeout</span><span class="p">])</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Initializing CoverageFsm, Pid: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span>
+    <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="nv">Request</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="p">[]},</span>
+    <span class="p">{</span><span class="nv">Request</span><span class="p">,</span> <span class="n">allup</span><span class="p">,</span> <span class="o">?</span><span class="nv">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">rclref</span><span class="p">,</span> <span class="n">rclref_vnode_master</span><span class="p">,</span> <span class="nv">Timeout</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">init</span><span class="p">({</span><span class="n">pid</span><span class="p">,</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="nv">Client_Pid</span><span class="p">},</span> <span class="p">[</span><span class="nv">Request</span> <span class="o">=</span> <span class="p">{</span><span class="n">all</span><span class="p">,</span> <span class="p">_},</span> <span class="nv">Timeout</span><span class="p">])</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Initializing CoverageFsm, Pid: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span>
+    <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="nv">Request</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="p">[]},</span>
+    <span class="p">{</span><span class="nv">Request</span><span class="p">,</span> <span class="n">allup</span><span class="p">,</span> <span class="o">?</span><span class="nv">N</span><span class="p">,</span> <span class="o">?</span><span class="nv">N</span><span class="p">,</span> <span class="n">rclref</span><span class="p">,</span> <span class="n">rclref_vnode_master</span><span class="p">,</span> <span class="nv">Timeout</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+
+<span class="nf">process_results</span><span class="p">({{_</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{_</span><span class="nv">Partition</span><span class="p">,</span> <span class="p">_</span><span class="nv">Node</span><span class="p">}},</span> <span class="p">[]},</span> <span class="nv">State</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">{</span><span class="n">done</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">process_results</span><span class="p">({{_</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{_</span><span class="nv">Partition</span><span class="p">,</span> <span class="p">_</span><span class="nv">Node</span><span class="p">}},</span> <span class="nv">Data</span><span class="p">},</span> <span class="nv">State</span> <span class="o">=</span> <span class="nl">#state</span><span class="p">{</span><span class="n">accum</span> <span class="o">=</span> <span class="nv">Accum</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="c">% If you need to get which partition and node the data comes from</span>
+    <span class="c">% NewAccum = [{Partition, Node, Data} |  Accum],</span>
+    <span class="nv">NewAccum</span> <span class="o">=</span> <span class="nv">Data</span> <span class="o">++</span> <span class="nv">Accum</span><span class="p">,</span>
+    <span class="p">{</span><span class="n">done</span><span class="p">,</span> <span class="nv">State</span><span class="nl">#state</span><span class="p">{</span><span class="n">accum</span> <span class="o">=</span> <span class="nv">NewAccum</span><span class="p">}}.</span>
+
+<span class="nf">finish</span><span class="p">(</span><span class="n">clean</span><span class="p">,</span>
+       <span class="nv">State</span> <span class="o">=</span>
+           <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="p">{</span><span class="n">unique</span><span class="p">,</span> <span class="p">_},</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="nv">Accum</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Terminating CoverageFsm, Pid: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span>
+    <span class="nv">NewAccum</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">usort</span><span class="p">(</span><span class="nv">Accum</span><span class="p">),</span>
+    <span class="nv">Client_Pid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">NewAccum</span><span class="p">}},</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">finish</span><span class="p">(</span><span class="n">clean</span><span class="p">,</span>
+       <span class="nv">State</span> <span class="o">=</span>
+           <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="p">{</span><span class="n">all</span><span class="p">,</span> <span class="p">_},</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="nv">Accum</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">info</span><span class="p">(</span><span class="s">&quot;Terminating CoverageFsm, Pid: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span>
+    <span class="nv">Client_Pid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">}},</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">finish</span><span class="p">({</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">},</span>
+       <span class="nv">State</span> <span class="o">=</span>
+           <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="p">{</span><span class="n">unique</span><span class="p">,</span> <span class="p">_},</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="nv">Accum</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">error</span><span class="p">(</span><span class="s">&quot;Coverage query failed! Reason: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Reason</span><span class="p">]),</span>
+    <span class="nv">NewAccum</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">usort</span><span class="p">(</span><span class="nv">Accum</span><span class="p">),</span>
+    <span class="nv">Client_Pid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">partial</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">,</span> <span class="nv">NewAccum</span><span class="p">}},</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">};</span>
+<span class="nf">finish</span><span class="p">({</span><span class="n">error</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">},</span>
+       <span class="nv">State</span> <span class="o">=</span>
+           <span class="nl">#state</span><span class="p">{</span><span class="n">req_id</span> <span class="o">=</span> <span class="nv">ReqId</span><span class="p">,</span> <span class="n">request</span> <span class="o">=</span> <span class="p">{</span><span class="n">all</span><span class="p">,</span> <span class="p">_},</span> <span class="n">client_pid</span> <span class="o">=</span> <span class="nv">Client_Pid</span><span class="p">,</span> <span class="n">accum</span> <span class="o">=</span> <span class="nv">Accum</span><span class="p">})</span> <span class="o">-&gt;</span>
+    <span class="nn">logger</span><span class="p">:</span><span class="nf">error</span><span class="p">(</span><span class="s">&quot;Coverage query failed! Reason: </span><span class="si">~p</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nv">Reason</span><span class="p">]),</span>
+    <span class="nv">Client_Pid</span> <span class="o">!</span> <span class="p">{</span><span class="nv">ReqId</span><span class="p">,</span> <span class="p">{</span><span class="n">partial</span><span class="p">,</span> <span class="nv">Reason</span><span class="p">,</span> <span class="nv">Accum</span><span class="p">}},</span>
+    <span class="p">{</span><span class="n">stop</span><span class="p">,</span> <span class="n">normal</span><span class="p">,</span> <span class="nv">State</span><span class="p">}.</span>
+</code></pre></div>
+
+<p><code>process_results</code> function will be used to concatenate results from different vnodes.
+After receiving all the responses,  <code>finish</code> will be called. This will send back the coverage result to the client.</p>
               
             </div>
           </div>
