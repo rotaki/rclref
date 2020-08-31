@@ -111,11 +111,31 @@
             <div class="section">
               
                 <h1 id="welcome-to-the-rclref-develoment-site">Welcome to the rclref develoment site</h1>
-<p>rclref is a reference implementation of a key-value store built on riak-core-lite.
-rclref was created as part of Google Summer of Code 2020 with the aim of exercising various APIs of riak-core-lite with documented support.
-Updated version of the code is <a href="https://github.com/wattlebirdaz/rclref">here</a>.</p>
+<p>riak_core is a distributed systems framework that is based on the Dynamo-Style architecture. It has served as the basis of Riak KV, a highly available masterless distributed database, providing essential features for controlling the behaviour of nodes in a database cluster. riak_core_lite is an updated version of riak_core which ensures compatibility with the recent OTP version and rebar, a build tool for erlang application and releases. </p>
+<p><strong>rclref</strong> is a reference implementation of a key-value store built on riak_core_lite. rclref was created as part of Google Summer of Code 2020 with the aim of exercising various APIs of riak_core_lite with documented support. This implementation can also be used for detecting regressions and serve as a starting point to try new ideas and show how different parts of riak_core_lite are used in practice.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>Updated version of the code is <a href="https://github.com/wattlebirdaz/rclref">here</a>.</p>
+<h1 id="summary">Summary</h1>
+<h2 id="describe-my-work-briefly">Describe my work briefly</h2>
+<ul>
+<li>Implemented a riak_core_lite based distributed application.</li>
+</ul>
+<h2 id="what-is-done">What is done</h2>
+<ul>
+<li>Created a RiakKV-like sample key-value store application on riak_core_lite with documents of the implemented features.</li>
+<li>Introduced how to test an Erlang distributed application using Common Test framework.</li>
+<li>Introduced how to benchmark key-value application using <code>rcl_bench</code>.</li>
+</ul>
+<h2 id="todo">TODO</h2>
+<ul>
+<li>Show benchmark results of rclref with riak_core backend and compare it with riak_core_lite.</li>
+<li>Abstract the testing module for more generic use.</li>
+<li>Use CRDTs for merging the replicated values.</li>
+</ul>
 <h1 id="development-languages-and-tools">Development languages and tools</h1>
-<p>The code is fully written in Erlang OTP &gt; 21.</p>
+<p>The code is fully written in Erlang OTP &gt;= 22.</p>
 <h1 id="license">License</h1>
 <p>rclref is released under Apache License, Version 2.0</p>
 <h1 id="table-of-cotents">Table of Cotents</h1>
@@ -125,6 +145,7 @@ Updated version of the code is <a href="https://github.com/wattlebirdaz/rclref">
 <li><a href="test/">How to test distributed Erlang application using Common Test?</a></li>
 <li><a href="benchmark/">How to benchmark riak_core_lite application?</a></li>
 <li><a href="usage/">How to actually use rclref?</a></li>
+<li><a href="other/">Other</a></li>
 </ol>
               
             </div>
@@ -180,5 +201,5 @@ Updated version of the code is <a href="https://github.com/wattlebirdaz/rclref">
 
 <!--
 MkDocs version : 1.1.2
-Build Date UTC : 2020-08-28 09:42:47.281078+00:00
+Build Date UTC : 2020-08-31 06:11:32.732704+00:00
 -->

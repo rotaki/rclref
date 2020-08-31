@@ -81,6 +81,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#how-to-delete-a-tombstone-from-backend">How to delete a tombstone from backend?</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-to-use-riak_core-instead-of-riak_core_lite">How to use riak_core instead of riak_core_lite?</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#more-information-on-riak_core">More information on riak_core</a>
     </li>
     </ul>
@@ -164,9 +166,18 @@ Then if another client on node2 requests to put a value on the same key, the vec
 <p>Tombstone is a key-value which has an undefined value. 
 Tombstone is created when a client request a delete on a Key because delete request is internally converetd into a put request with key=Key, value=undefined. Tombstones are not transparent to the user but you can see them using the coverage calls in LowLevelAPI such as <code>rclref:list_all_objects()</code>.</p>
 <p>The LowLevelAPI also provides a method to delete the tombstone completely from the backend which is <code>rclref:reap(Key)</code>. This function should only be used when the connection between nodes is stable otherwise the deleted value might resurrect.</p>
+<h2 id="how-to-use-riak_core-instead-of-riak_core_lite">How to use riak_core instead of riak_core_lite?</h2>
+<ol>
+<li>Remove riak_core_lite and riak_core_lite_utils from rebar.config</li>
+<li>Add riak_core as dependency.</li>
+<li>Make a _checkouts directory in rclref. Clone riak_core into that and checkout branch develop-3.0</li>
+<li>Comment riak_core_coverage_fsm.erl and riak_core_coverage_plan.erl out</li>
+<li>Add riak_core.schema to dir _build/dev1/rel/rclref/lib manually</li>
+<li>Use at most Erlang 22</li>
+</ol>
 <h2 id="more-information-on-riak_core">More information on riak_core</h2>
-<p>These are websites that explains how to create riak_core applicaiton.
-Note that riak_core and riak_core_lite has some differences e.g. coverage calls.</p>
+<p>These are websites that explain how to create riak_core applicaiton.
+Note that riak_core and riak_core_lite have some differences e.g. coverage calls.</p>
 <ul>
 <li><a href="https://github.com/basho/riak_core/wiki">Riak Core wiki</a></li>
 <li><a href="https://github.com/lambdaclass/riak_core_tutorial">Riak Core Tutorial: lambda class</a></li>

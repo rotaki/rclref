@@ -67,7 +67,19 @@
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="./">How to benchmark riak_core_lite application?</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#rcl_bench">rcl_bench</a>
+    <li class="toctree-l2"><a class="reference internal" href="#how-to-configure-rcl_bench">How to configure rcl_bench?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#where-to-find-the-results">Where to find the results?</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#results-of-benchmarking-rcl_bench">Results of benchmarking rcl_bench</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#environment">Environment</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#single-node">Single node</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#multi-node">Multi node</a>
+    </li>
+        </ul>
     </li>
     </ul>
                     </li>
@@ -113,7 +125,143 @@
             <div class="section">
               
                 <h1 id="how-to-benchmark-riak_core_lite-application">How to benchmark riak_core_lite application?</h1>
-<h2 id="rcl_bench">rcl_bench</h2>
+<h2 id="how-to-configure-rcl_bench">How to configure rcl_bench?</h2>
+<p>rcl_bench is a benchmarking tools for key-value store application.
+It is a lighter verison of basho_bench and it is easy to use.</p>
+<p>To use it, first clone the rcl_bench repository.</p>
+<div class="highlight"><pre><span></span><code>git clone git@github.com:riak-core-lite/rcl_bench.git
+</code></pre></div>
+
+<ul>
+<li>Configure rcl_bench</li>
+</ul>
+<p>To configure rcl_bench, you need to modify the following in rcl_bench repo.</p>
+<div class="highlight"><pre><span></span><code>config/sys.config
+config/vm.args
+</code></pre></div>
+
+<p>The <code>sys.config</code> for benchmarking <code>rclref</code> was below.</p>
+<div class="highlight"><pre><span></span><code>{rcl_bench, [
+    %% Mode of load generation:
+    %% max - Generate as many requests as possible per worker
+    %% {rate, Rate} - Exp. distributed Mean reqs/sec
+    %% {rate, max}  - as fast as possible
+    {mode, {rate, max}},
+
+    %% Base test output directory
+    {test_dir, &quot;tests&quot;},
+
+    %% Test duration (minutes)
+    {duration, 15},
+
+    %% Number of concurrent workers
+    {concurrent, 4},
+
+    %% Operations (and associated mix)
+    {operations, [{get_own_puts, 3}, 
+                  {put, 10}, 
+                  {get, 2}]},
+
+    %% Key generators
+    %% {uniform_int, N} - Choose a uniformly distributed integer between 0 and N
+    {key_generator, {uniform_int, 100000}},
+
+    %% Value generators
+    %% {fixed_bin, N} - Fixed size binary blob of N bytes
+    {value_generator, {fixed_bin, 100}},
+
+    {random_algorithm, exsss},
+    {random_seed, {1,4,3}},
+
+    {ip, &#39;127.0.0.1&#39;},
+    {port, 8080}
+  ]}
+</code></pre></div>
+
+<p>The important part in the snippet above is the operations tuple.</p>
+<div class="highlight"><pre><span></span><code>    %% Operations (and associated mix)
+    {operations, [{get_own_puts, 3}, 
+                  {put, 10}, 
+                  {get, 2}]},
+</code></pre></div>
+
+<p>Associated mix is the weight of the operations. This means that on average, it will execute <code>get_own_puts</code> 3/15, <code>put</code> 10/15, <code>get</code> 2/15. The contents of the operations are implemented in the <code>rcl_bench_dirver.erl</code> module.</p>
+<ul>
+<li>Implement more operations in rcl_bench_dirver.erl</li>
+</ul>
+<p>If new operations are added and you want to benchmark them, you need to add it in the <code>sys.config</code> as well.
+For testing rclref, the following operations are implemented.</p>
+<p><code>get_own_puts</code>: get a stored value<br />
+<code>get</code>: get a value<br />
+<code>put</code>: put a value  </p>
+<ul>
+<li>Run the benchmark after starting the database application.</li>
+</ul>
+<p>Start rclref and then run the follwoing in rcl_bench repository.</p>
+<div class="highlight"><pre><span></span><code>make run
+</code></pre></div>
+
+<h2 id="where-to-find-the-results">Where to find the results?</h2>
+<p>The results of the benchmark are stored as csv in  <code>rcl_bench/_build/default/rel/rcl_bench/tests</code>. The current results can be found in the <code>current</code> directory as well. Run the R script in the <code>R</code> directory to visualize the results by reading the csvs in the <code>current</code> directory.</p>
+<div class="highlight"><pre><span></span><code>Rscript latency.R TITILE_OF_CSV
+Rscript throughput.R TITLE_OF_CSV
+</code></pre></div>
+
+<p>To see the results of all the operations, concatenate the result csvs in the <code>current</code> directory.</p>
+<div class="highlight"><pre><span></span><code>cat get_single.csv get-own-puts_single.csv put_single.csv <span class="p">|</span> sed <span class="s1">&#39;2, $s/timestamp, unit, microseconds//g&#39;</span> &gt;&gt; all_single.csv
+</code></pre></div>
+
+<p>Then you can visualize by the following commnand in the <code>R</code> directory.</p>
+<div class="highlight"><pre><span></span><code>Rscript throughput.R all_single
+Rscript latency.R all_single
+</code></pre></div>
+
+<p>This will create png file of the result.</p>
+<h2 id="results-of-benchmarking-rcl_bench">Results of benchmarking rcl_bench</h2>
+<p>The results of benchmarking rclref were the follwoing.</p>
+<h3 id="environment">Environment</h3>
+<table>
+<thead>
+<tr>
+<th>Processor Name</th>
+<th>Dual-Core Intel Core i5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Processor Speed</td>
+<td>2 GHz</td>
+</tr>
+<tr>
+<td>Number of Processors</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Total Number of Cores</td>
+<td>2</td>
+</tr>
+<tr>
+<td>L2 Cache (per Core)</td>
+<td>256 KB</td>
+</tr>
+<tr>
+<td>L3 Cache</td>
+<td>4 MB</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>8 GB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="single-node">Single node</h3>
+<p>A single node cluster with N=3, R=1, W=1 using ETS as backend.</p>
+<p><img alt="Throughput_single" src="../images/all_single_throughput.png" /> 
+<img alt="Latency_single" src="../images/all_single_latency.png" /> </p>
+<h3 id="multi-node">Multi node</h3>
+<p>3 node cluster with N=3, R=1, W=1 using ETS as backend.</p>
+<p><img alt="Throughput_multiple" src="../images/all_multiple_throughput.png" />
+<img alt="Latency_multiple" src="../images/all_multiple_latency.png" /> </p>
               
             </div>
           </div>

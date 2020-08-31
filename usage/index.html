@@ -71,6 +71,14 @@
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="./">How to actually use rclref?</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#set-up-the-cluster">Set up the cluster</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#single-node-cluster">Single Node Cluster</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#3-node-cluster">3 Node Cluster</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#userapi">UserAPI</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#httpapi">HttpAPI</a>
@@ -115,10 +123,49 @@
             <div class="section">
               
                 <h1 id="how-to-actually-use-rclref">How to actually use rclref?</h1>
-<p>This page descirbes how to use rclref as a key-value store.
-First start the application by </p>
-<div class="highlight"><pre><span></span><code>make
-make console
+<p>This page descirbes how to use rclref as a key-value store.</p>
+<h2 id="set-up-the-cluster">Set up the cluster</h2>
+<h3 id="single-node-cluster">Single Node Cluster</h3>
+<p>Build the applicaiton by </p>
+<div class="highlight"><pre><span></span><code>make release
+</code></pre></div>
+
+<p>Start the application in background.</p>
+<div class="highlight"><pre><span></span><code>make start
+</code></pre></div>
+
+<p>If you want to start the application in foreground.</p>
+<div class="highlight"><pre><span></span><code>make console
+</code></pre></div>
+
+<h3 id="3-node-cluster">3 Node Cluster</h3>
+<p>Build the application by</p>
+<div class="highlight"><pre><span></span><code>make devrel
+</code></pre></div>
+
+<p>Start 3 nodes in background</p>
+<div class="highlight"><pre><span></span><code>make devrel-start
+</code></pre></div>
+
+<p>Join 2 nodes to the first node.</p>
+<div class="highlight"><pre><span></span><code>make devrel-join
+</code></pre></div>
+
+<p>Check the cluster plan.
+<div class="highlight"><pre><span></span><code>make devrel-cluster-plan
+</code></pre></div></p>
+<p>Commit the join.
+<div class="highlight"><pre><span></span><code>make devrel-cluster-commit
+</code></pre></div></p>
+<p>See the status of the cluster.
+<div class="highlight"><pre><span></span><code>make dev1-status
+make dev2-status
+make dev3-status
+</code></pre></div></p>
+<p>Leave node from cluster.</p>
+<div class="highlight"><pre><span></span><code>make dev1-leave
+make dev2-leave
+make dev3-leave
 </code></pre></div>
 
 <h2 id="userapi">UserAPI</h2>
