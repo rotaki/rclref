@@ -1,7 +1,8 @@
 rclref
 ===========
 
-A riak_core application
+A reference implementation of a distributed key-value store using riak_core_lite.
+More information on this project is provided `here <https://wattlebirdaz.github.io/rclref>``_.
 
 Build
 -----
@@ -29,21 +30,28 @@ Try
 
 ::
 
-    1> rclref:ping().
-    {pong,'rclref1@127.0.0.1', 9...8}
+    1> rclref_client:put(<<"dog">>, <<"cat">>).
+    ok
 
-Quit
-----
+    2> rclref_client:get(<<"dog">>).
+    {ok,[<<"cat">>,<<"cat">>,<<"cat">>]}
 
-::
+    3> rclref_client:list_keys().
+    {ok,[<<"dog">>]}
 
-    2> q().
+    4>rclref_client:delete(<<"dog">>).
+    ok
+
+    5> rclref_client:get(<<"dog">>).
+    {error,not_found}
+
+
 
 More information:
 
+* `rclref development site <https://wattlebirdaz.github.io/rclref>``_
 * `Getting Started Guide <https://riak-core-lite.github.io/blog/pages/getting-started/>`_
-* `Riak Core Lite Site <https://riak-core-lite.github.io/>`_
-
+* `Riak Core Lite Site <https://riak-core-lite.github.io/>``_
 
 License
 -------
