@@ -2,7 +2,7 @@ rclref
 ===========
 
 A reference implementation of a distributed key-value store using riak_core_lite.
-More information on this project is provided `here <https://wattlebirdaz.github.io/rclref>``_.
+More information on this project is provided `here <https://wattlebirdaz.github.io/rclref>`_.
 
 Build
 -----
@@ -51,9 +51,9 @@ Erlang interface (replication = 3)
 
 More information:
 
-* `rclref development site <https://wattlebirdaz.github.io/rclref>``_
+* `rclref development site <https://wattlebirdaz.github.io/rclref>`_
 * `Getting Started Guide <https://riak-core-lite.github.io/blog/pages/getting-started/>`_
-* `Riak Core Lite Site <https://riak-core-lite.github.io/>``_
+* `Riak Core Lite Site <https://riak-core-lite.github.io/>`_
 
 License
 -------
