@@ -118,7 +118,7 @@ waiting(cast,
     VnodeErrors = [VnodeError] ++ VnodeErrors0,
     NewState = State#state{num_vnode_error = NumVnodeError, vnode_errors = VnodeErrors},
 
-    % When more than (N-R) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client
+    % When more than (N-W) vnodes responded with {error, VnodeError}, return all RObjs and VnodeErrors it has received to client
     case NumVnodeError > N - W of
       true ->
           ClientPid ! {ReqId, {{ok, RObjs0}, {error, VnodeErrors}}},
