@@ -1,11 +1,73 @@
 # How to actually use rclref?
 
 This page descirbes how to use rclref as a key-value store.
-First start the application by 
+
+## Set up the cluster
+
+### Single Node Cluster
+
+Build the applicaiton by 
 
 ```sh
-make
+make release
+```
+
+Start the application in background.
+
+```sh
+make start
+```
+
+If you want to start the application in foreground.
+
+```sh
 make console
+```
+
+### 3 Node Cluster
+
+Build the application by
+
+```sh
+make devrel
+```
+
+Start 3 nodes in background
+
+```sh
+make devrel-start
+```
+
+Join 2 nodes to the first node.
+
+```sh
+make devrel-join
+```
+
+
+Check the cluster plan.
+```sh
+make devrel-cluster-plan
+```
+
+Commit the join.
+```sh
+make devrel-cluster-commit
+```
+
+See the status of the cluster.
+```sh
+make dev1-status
+make dev2-status
+make dev3-status
+```
+
+Leave node from cluster.
+
+```
+make dev1-leave
+make dev2-leave
+make dev3-leave
 ```
 
 ## UserAPI

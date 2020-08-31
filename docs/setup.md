@@ -4,7 +4,7 @@ This page provides an overview of how to setup a riak_core_lite applicaiton.
 
 ## Erlang
 
-Install Erlang OTP version > 22
+Install Erlang OTP version >= 22
 
 ## rebar3
 

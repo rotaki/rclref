@@ -60,12 +60,19 @@ Tombstone is created when a client request a delete on a Key because delete requ
 The LowLevelAPI also provides a method to delete the tombstone completely from the backend which is `rclref:reap(Key)`. This function should only be used when the connection between nodes is stable otherwise the deleted value might resurrect.
 
 
+## How to use riak_core instead of riak_core_lite?
 
+1. Remove riak_core_lite and riak_core_lite_utils from rebar.config
+2. Add riak_core as dependency.
+3. Make a _checkouts directory in rclref. Clone riak_core into that and checkout branch develop-3.0
+4. Comment riak_core_coverage_fsm.erl and riak_core_coverage_plan.erl out
+5.  Add riak_core.schema to dir _build/dev1/rel/rclref/lib manually
+6. Use at most Erlang 22
 
 ## More information on riak_core
 
-These are websites that explains how to create riak_core applicaiton.
-Note that riak_core and riak_core_lite has some differences e.g. coverage calls.
+These are websites that explain how to create riak_core applicaiton.
+Note that riak_core and riak_core_lite have some differences e.g. coverage calls.
 
 - [Riak Core wiki](https://github.com/basho/riak_core/wiki)
 - [Riak Core Tutorial: lambda class](https://github.com/lambdaclass/riak_core_tutorial)
