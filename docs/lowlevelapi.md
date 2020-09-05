@@ -27,11 +27,6 @@ Backend3 --> Vnode3
 Coordinator -right-> LowLevelAPI
 LowLevelAPI -up-> UserAPI
 
-note right of Coordinator
-    Calculate hash to distribute request to vnodes.
-    When enough responses from vnodes are collected, return to API.
-end note
-
 UserAPI: rclref_client.erl
 LowLevelAPI: rclref.erl
 Supervisor: rclref_get_statem_sup.erl
